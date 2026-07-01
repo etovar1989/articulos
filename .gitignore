@@ -1,0 +1,37 @@
+# Credenciales — NUNCA subir al repo
+.env
+
+# Dependencias PHP
+/vendor/
+
+# Dependencias Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+
+# Datos locales de Docker
+docker/data/
+postgres_data/
+
+# Logs
+*.log
+/logs/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDEs
+.vscode/settings.json
+.vscode/launch.json
+.idea/
+*.swp
+*.swo
+
+# Archivos temporales
+*.tmp
+*.cache
