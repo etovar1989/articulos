@@ -35,3 +35,22 @@ desktop.ini
 # Archivos temporales
 *.tmp
 *.cache
+
+# Scripts de administración Windows (solo para desarrollo local)
+*.bat
+*.vbs
+*.ps1
+move_docker_to_D.bat
+docker_info.log
+docker_output.log
+wsl_*.log
+db_logs.log
+
+# Scripts de mantenimiento temporal
+apply_schema.php
+insert_server.py
+insert_log.txt
+restart_log.txt
+schema_log.txt
+servers.json
+requirements.txt
