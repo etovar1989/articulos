@@ -8,8 +8,10 @@ Procesa en batches concurrentes (hilos) para terminar en tiempo razonable.
 """
 import json
 import os
+import re
 import sys
 import time
+import unicodedata
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import psycopg2
@@ -25,6 +27,11 @@ client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 enc = tiktoken.get_encoding("cl100k_base")
 MAX_BODY_TOKENS = 800
 CONCURRENCY = 8
+
+
+def slugify(text: str) -> str:
+    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
+    return re.sub(r"[^a-zA-Z0-9]+", "-", text).strip("-").lower()
 
 
 def truncate(text, max_tokens):
@@ -64,11 +71,15 @@ def upsert_tags(conn, article_id: int, tags: list[str]):
         for tag_name in tags:
             if not tag_name:
                 continue
+            slug = slugify(tag_name)
             cur.execute(
-                "INSERT INTO tags (name) VALUES (%s) ON CONFLICT (name) DO NOTHING;",
-                (tag_name,),
+                "INSERT INTO tags (name, slug) VALUES (%s, %s) ON CONFLICT DO NOTHING;",
+                (tag_name, slug),
             )
-            cur.execute("SELECT id FROM tags WHERE name = %s;", (tag_name,))
+            # ON CONFLICT sin columna: puede chocar por "name" o por "slug"
+            # (dos nombres distintos que normalizan al mismo slug), asi que
+            # se busca por ambos para cubrir cualquiera de los dos casos.
+            cur.execute("SELECT id FROM tags WHERE name = %s OR slug = %s LIMIT 1;", (tag_name, slug))
             tag_id = cur.fetchone()[0]
             cur.execute(
                 "INSERT INTO article_tags (article_id, tag_id) VALUES (%s, %s) ON CONFLICT DO NOTHING;",

@@ -11,7 +11,9 @@ Requiere que build_embeddings.py haya terminado.
 import argparse
 import json
 import os
+import re
 import sys
+import unicodedata
 
 import numpy as np
 import psycopg2
@@ -23,6 +25,11 @@ DB = dict(host="127.0.0.1", port=5432, dbname="edtk_eduteka",
           options="-c client_encoding=UTF8")
 
 client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+
+
+def slugify(text: str) -> str:
+    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
+    return re.sub(r"[^a-zA-Z0-9]+", "-", text).strip("-").lower()
 
 
 def label_cluster(titles_sample: list[str]) -> dict:
@@ -104,12 +111,12 @@ def main():
 
         cur.execute(
             """
-            INSERT INTO categories (name, description)
-            VALUES (%s, %s)
-            ON CONFLICT (name) DO UPDATE SET description = EXCLUDED.description
+            INSERT INTO categories (name, slug, description)
+            VALUES (%s, %s, %s)
+            ON CONFLICT (name) DO UPDATE SET slug = EXCLUDED.slug, description = EXCLUDED.description
             RETURNING id;
             """,
-            (name, desc),
+            (name, slugify(name), desc),
         )
         cat_id = cur.fetchone()[0]
         category_ids[c] = cat_id

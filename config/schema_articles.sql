@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS articles (
 CREATE TABLE IF NOT EXISTS categories (
     id              SERIAL PRIMARY KEY,
     name            TEXT NOT NULL UNIQUE,
+    slug            TEXT UNIQUE,
     description     TEXT,
     created_at      TIMESTAMP NOT NULL DEFAULT now()
 );
@@ -30,6 +31,7 @@ ALTER TABLE articles
 CREATE TABLE IF NOT EXISTS tags (
     id              SERIAL PRIMARY KEY,
     name            TEXT NOT NULL UNIQUE,
+    slug            TEXT UNIQUE,
     created_at      TIMESTAMP NOT NULL DEFAULT now()
 );
 

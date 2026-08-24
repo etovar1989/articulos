@@ -4,6 +4,9 @@
 # Dependencias PHP
 /vendor/
 
+# Cache de plantillas compiladas de F3
+/tmp/
+
 # Dependencias Python
 __pycache__/
 *.pyc
