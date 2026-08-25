@@ -79,9 +79,8 @@ $descripcion = 'Eduteka: recursos, artículos y herramientas con IA para docente
 <!-- NAV -->
 <header class="sticky top-0 z-40 bg-white border-b border-gray-100">
     <div class="max-w-6xl mx-auto px-4 h-[76px] flex items-center justify-between gap-6">
-        <a href="/" class="flex items-center gap-2 shrink-0">
+        <a href="/" class="flex items-center shrink-0">
             <img src="/img/logo-eduteka.png" alt="Eduteka" class="h-8 w-auto">
-            <span class="hidden sm:block text-xs text-gray-500 border-l border-gray-200 pl-2">Llega más lejos</span>
         </a>
         <nav class="hidden md:flex items-center gap-7 text-sm font-semibold">
             <a href="#contenido" class="hover:text-marca-azul">Contenido</a>
