@@ -11,6 +11,7 @@ $descripcion = $descripcion ?? 'Recursos educativos de Eduteka';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= e($titulo) ?> · Eduteka</title>
+    <link rel="icon" type="image/png" href="/favicon.png">
     <meta name="description" content="<?= e($descripcion) ?>">
     <meta property="og:type" content="article">
     <meta property="og:title" content="<?= e($titulo) ?>">
