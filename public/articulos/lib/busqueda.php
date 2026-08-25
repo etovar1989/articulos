@@ -28,21 +28,37 @@ function reindexar_embedding_articulo(PDO $pdo, array $config, int $articleId, s
         $texto = mb_substr($texto, 0, 24000);
     }
 
-    $payload = json_encode(['model' => 'text-embedding-3-small', 'input' => $texto]);
-    $ch = curl_init('https://api.openai.com/v1/embeddings');
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_POST => true,
-        CURLOPT_HTTPHEADER => [
-            'Content-Type: application/json',
-            'Authorization: Bearer ' . $config['openai_api_key'],
-        ],
-        CURLOPT_POSTFIELDS => $payload,
-        CURLOPT_TIMEOUT => 15,
-    ]);
-    $respuesta = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
+    // La aproximación de 4 char/token no siempre alcanza (textos con muchos signos
+    // de puntuación o acentos tokenizan más denso) — si la API igual rechaza por
+    // "maximum context length", se reintenta con la mitad del texto en vez de fallar
+    // el artículo entero. embedding-3-small acepta 8192 tokens.
+    $intentos = 0;
+    do {
+        $payload = json_encode(['model' => 'text-embedding-3-small', 'input' => $texto]);
+        $ch = curl_init('https://api.openai.com/v1/embeddings');
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: application/json',
+                'Authorization: Bearer ' . $config['openai_api_key'],
+            ],
+            CURLOPT_POSTFIELDS => $payload,
+            CURLOPT_TIMEOUT => 15,
+        ]);
+        $respuesta = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        $excedeContexto = $httpCode === 400
+            && is_string($respuesta)
+            && str_contains($respuesta, 'maximum context length');
+        if (!$excedeContexto) {
+            break;
+        }
+        $texto = mb_substr($texto, 0, (int) (mb_strlen($texto) / 2));
+        $intentos++;
+    } while ($intentos < 3);
 
     if ($respuesta === false || $httpCode >= 400) {
         error_log('reindexar_embedding_articulo: error OpenAI HTTP ' . $httpCode . ' body=' . $respuesta);
