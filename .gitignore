@@ -1,11 +1,26 @@
 # Credenciales — NUNCA subir al repo
 .env
+/app/config.local.ini
+/public/articulos/config/config.php
+/public/admin/config/config.php
 
 # Dependencias PHP
 /vendor/
+/public/articulos/vendor/
 
-# Cache de plantillas compiladas de F3
+# Datos grandes que ya viven en produccion — copia local solo para desarrollo,
+# no se versionan (23MB de markdown + 105MB de imagenes de portada)
+/public/articulos/doc/
+/public/articulos/img/
+
+# Cache de plantillas compiladas de F3 y logs de la app
 /tmp/
+
+# Subidas, sesiones, backups locales
+/data/
+
+# Snapshot descargado del servidor de produccion (solo para portar codigo/schema, no versionado)
+/_server_download/
 
 # Dependencias Python
 __pycache__/

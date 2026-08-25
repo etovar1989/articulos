@@ -1,0 +1,13 @@
+/* Estilos del panel admin de Eduteka. La marca (colores, tipografía) vive en el
+   tailwind.config inline de templates/header.php — ver manualMarca.md. Este archivo
+   queda solo para detalles puntuales que no se resuelven bien con utilidades. */
+
+::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: #CECFF4;
+    border-radius: 4px;
+}

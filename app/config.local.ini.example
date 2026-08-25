@@ -1,0 +1,10 @@
+; Copia como config.local.ini y completa los valores. NO se commitea (ver .gitignore).
+
+[globals]
+DEBUG=3
+DB_DSN="pgsql:host=127.0.0.1;port=5432;dbname=edtk_eduteka"
+DB_USER="edtk_root_eduteka"
+DB_PASS="cambia-esto"
+OPENAI_API_KEY="sk-..."
+SITE_URL="http://localhost:8080"
+ADMIN_PASSWORD_HASH="genera-con-password_hash()"
