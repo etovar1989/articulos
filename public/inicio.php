@@ -203,7 +203,10 @@ $descripcion = 'Eduteka: recursos, artículos y herramientas con IA para docente
 </section>
 
 <!-- HERRAMIENTAS -->
-<section id="herramientas" class="py-24 bg-gray-50">
+<section id="herramientas" class="relative py-24" style="background: rgba(206,207,244,.18);">
+    <svg class="absolute top-0 left-0 w-full text-white" style="height:48px; transform:translateY(-1px);" viewBox="0 0 1440 48" preserveAspectRatio="none" aria-hidden="true">
+        <path fill="currentColor" d="M0,48 C 240,0 480,0 720,24 C 960,48 1200,48 1440,0 L1440,48 L0,48 Z"></path>
+    </svg>
     <div class="max-w-6xl mx-auto px-4">
         <span class="text-marca-azul text-xs font-bold tracking-widest uppercase">Herramientas</span>
         <h2 class="text-3xl font-extrabold mt-2 max-w-xl">EdutekaLab: <strong>herramientas con IA</strong> para tu práctica docente</h2>
@@ -251,7 +254,7 @@ $descripcion = 'Eduteka: recursos, artículos y herramientas con IA para docente
 </section>
 
 <!-- COMUNIDAD -->
-<section id="comunidad" class="py-24">
+<section id="comunidad" class="py-24 border-t border-gray-200">
     <div class="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
         <div>
             <span class="text-marca-azul text-xs font-bold tracking-widest uppercase">Comunidad</span>
