@@ -8,6 +8,9 @@
 /vendor/
 /public/articulos/vendor/
 
+# Imagenes fuente sin optimizar (la copia optimizada y servida vive en public/img/)
+/img/
+
 # Datos grandes que ya viven en produccion — copia local solo para desarrollo,
 # no se versionan (23MB de markdown + 105MB de imagenes de portada)
 /public/articulos/doc/

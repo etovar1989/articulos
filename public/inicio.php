@@ -79,9 +79,9 @@ $descripcion = 'Eduteka: recursos, artículos y herramientas con IA para docente
 <!-- NAV -->
 <header class="sticky top-0 z-40 bg-white border-b border-gray-100">
     <div class="max-w-6xl mx-auto px-4 h-[76px] flex items-center justify-between gap-6">
-        <a href="/" class="flex items-baseline gap-2 shrink-0">
-            <span class="text-xl font-extrabold text-marca-azul tracking-tight">eduteka</span>
-            <span class="hidden sm:block text-xs text-gray-500">Llega más lejos</span>
+        <a href="/" class="flex items-center gap-2 shrink-0">
+            <img src="/img/logo-eduteka.png" alt="Eduteka" class="h-8 w-auto">
+            <span class="hidden sm:block text-xs text-gray-500 border-l border-gray-200 pl-2">Llega más lejos</span>
         </a>
         <nav class="hidden md:flex items-center gap-7 text-sm font-semibold">
             <a href="#contenido" class="hover:text-marca-azul">Contenido</a>
@@ -286,10 +286,13 @@ $descripcion = 'Eduteka: recursos, artículos y herramientas con IA para docente
 <!-- ICESI-EDUTEKA -->
 <section id="icesi-eduteka" class="py-24 bg-gray-50">
     <div class="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
-        <div class="h-96 rounded-lg relative overflow-hidden" style="background: linear-gradient(160deg, #5454E9 0%, #865CF0 100%);">
-            <div class="absolute bottom-6 left-6 right-6 text-white">
-                <span class="text-xs font-bold uppercase tracking-widest opacity-80">Cali, Colombia</span>
-                <p class="text-sm font-bold mt-1">Universidad Icesi · Sede del Centro Eduteka</p>
+        <div class="h-96 rounded-lg relative overflow-hidden">
+            <img src="/img/torre-icesi.jpg" alt="Torre de la Universidad Icesi" class="absolute inset-0 w-full h-full object-cover">
+            <div class="absolute inset-0" style="background: linear-gradient(0deg, rgba(10,10,25,.85) 0%, rgba(10,10,25,.35) 45%, rgba(10,10,25,0) 70%);"></div>
+            <div class="absolute bottom-6 left-6 right-6">
+                <span class="inline-block bg-marca-amarillo text-xs font-bold px-3 py-1 rounded mb-3" style="color:#2B2B7A;">Sede oficial</span>
+                <p class="text-2xl font-extrabold text-white leading-tight">Universidad Icesi</p>
+                <p class="text-sm text-white/80 mt-1">Calle 18 No. 122–135, Pance · Cali, Colombia</p>
             </div>
         </div>
         <div>
@@ -321,12 +324,25 @@ $descripcion = 'Eduteka: recursos, artículos y herramientas con IA para docente
             <span class="text-marca-azul text-xs font-bold tracking-widest uppercase">Aliados</span>
             <h2 class="text-3xl font-extrabold mt-2">Instituciones que hacen posible Eduteka</h2>
         </div>
-        <div class="grid grid-cols-3 md:grid-cols-6 gap-4 items-center">
-            <?php for ($i = 1; $i <= 6; $i++): ?>
-            <div class="h-14 bg-gray-50 rounded flex items-center justify-center text-xs font-bold text-gray-400">Aliado 0<?= $i ?></div>
-            <?php endfor; ?>
+        <?php
+        $aliados = [
+            ['file' => 'ascofade.png', 'name' => 'Ascofade'],
+            ['file' => 'comision-vallecaucana.jpg', 'name' => 'Comisión Vallecaucana'],
+            ['file' => 'fanalca.png', 'name' => 'Fanalca'],
+            ['file' => 'fundacion-mayaguez.png', 'name' => 'Fundación Mayagüez'],
+            ['file' => 'florecer.png', 'name' => 'Florecer'],
+            ['file' => 'tq.png', 'name' => 'TQ'],
+            ['file' => 'scarpetta-gnecco.png', 'name' => 'Scarpetta Gnecco'],
+            ['file' => 'senacyt.jpg', 'name' => 'Senacyt'],
+        ];
+        ?>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 items-center">
+            <?php foreach ($aliados as $a): ?>
+            <div class="h-20 bg-gray-50 rounded flex items-center justify-center p-4">
+                <img src="/img/aliados/<?= e($a['file']) ?>" alt="<?= e($a['name']) ?>" class="max-h-full max-w-full object-contain" loading="lazy">
+            </div>
+            <?php endforeach; ?>
         </div>
-        <p class="text-center text-xs text-gray-400 mt-5">[Espacio reservado para logos reales de aliados]</p>
     </div>
 </section>
 
