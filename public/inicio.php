@@ -50,6 +50,7 @@ $descripcion = 'Eduteka: recursos, artículos y herramientas con IA para docente
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -428,6 +429,174 @@ $descripcion = 'Eduteka: recursos, artículos y herramientas con IA para docente
         </div>
     </div>
 </footer>
+
+<!-- Chatbot general: "Pregúntale a Eduteka" (RAG sobre los <?= number_format($totalArticulos, 0, ',', '.') ?> artículos) -->
+<div class="fixed bottom-6 right-6 z-40">
+    <button id="btn-chat-general-flotante" onclick="alternarChatGeneral()" type="button"
+            class="group relative w-14 h-14 rounded-full bg-marca-azul text-white shadow-lg hover:bg-marca-azulHover transition flex items-center justify-center text-xl">
+        <i id="icono-chat-general-flotante" class="fa-solid fa-graduation-cap"></i>
+        <span class="pointer-events-none absolute right-full mr-3 top-1/2 -translate-y-1/2 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100">
+            Pregúntale a Eduteka
+        </span>
+    </button>
+</div>
+
+<div id="ventana-chat-general" class="hidden fixed bottom-24 right-6 z-40 w-[380px] max-w-[calc(100vw-2rem)] max-h-[32rem] flex-col overflow-hidden rounded-xl border border-gray-100 bg-white shadow-2xl">
+    <div class="flex items-center gap-3 bg-marca-azul px-4 py-3 text-white shrink-0">
+        <div class="flex w-9 h-9 items-center justify-center rounded-full bg-white/15">
+            <i class="fa-solid fa-graduation-cap"></i>
+        </div>
+        <div class="flex-1 leading-tight">
+            <div class="text-sm font-semibold">Pregúntale a Eduteka</div>
+            <div class="text-xs text-marca-grisClaro">Busca en los <?= number_format($totalArticulos, 0, ',', '.') ?> artículos</div>
+        </div>
+        <button onclick="alternarChatGeneral()" type="button" class="px-1 text-lg leading-none text-white/80 hover:text-white">&minus;</button>
+    </div>
+
+    <div id="chat-general-bienvenida" class="overflow-y-auto px-5 py-6 text-center">
+        <div class="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-marca-grisClaro/40 text-2xl text-marca-azul">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+        </div>
+        <h3 class="mb-1 font-bold">¡Hola! Soy el asistente de Eduteka</h3>
+        <p class="mb-4 text-sm text-gray-500">Pregúntame lo que quieras: busco en todos los artículos del portal y te respondo citando las fuentes.</p>
+        <div class="space-y-2 text-left">
+            <button type="button" class="sugerencia-chat-general flex w-full items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm transition hover:border-marca-azul hover:bg-marca-azul/5"
+                    data-pregunta="¿Qué es la Competencia para Manejar Información (CMI)?">
+                <i class="fa-regular fa-lightbulb w-4 text-marca-azul"></i> ¿Qué es la CMI?
+            </button>
+            <button type="button" class="sugerencia-chat-general flex w-full items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm transition hover:border-marca-azul hover:bg-marca-azul/5"
+                    data-pregunta="Dame ideas para usar Scratch con niños de primaria">
+                <i class="fa-solid fa-code w-4 text-marca-azul"></i> Ideas con Scratch en primaria
+            </button>
+            <button type="button" class="sugerencia-chat-general flex w-full items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm transition hover:border-marca-azul hover:bg-marca-azul/5"
+                    data-pregunta="¿Cómo diseño una rúbrica de evaluación?">
+                <i class="fa-regular fa-clipboard w-4 text-marca-azul"></i> Diseñar una rúbrica
+            </button>
+            <button type="button" class="sugerencia-chat-general flex w-full items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm transition hover:border-marca-azul hover:bg-marca-azul/5"
+                    data-pregunta="¿Qué dice Eduteka sobre el pensamiento computacional?">
+                <i class="fa-solid fa-diagram-project w-4 text-marca-azul"></i> Pensamiento computacional
+            </button>
+        </div>
+    </div>
+
+    <div id="chat-general-mensajes" class="hidden flex-1 space-y-3 overflow-y-auto px-4 py-3"></div>
+
+    <form id="form-chat-general" class="flex shrink-0 gap-2 border-t border-gray-100 p-3">
+        <input id="chat-general-input" type="text" required placeholder="Escribe tu pregunta..."
+               class="flex-1 rounded-full border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-marca-azul">
+        <button type="submit" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-marca-azul text-white transition hover:bg-marca-azulHover">
+            <i class="fa-solid fa-paper-plane text-sm"></i>
+        </button>
+    </form>
+</div>
+
+<script>
+function avisarChatGeneral(icono, titulo) {
+    Swal.fire({ toast: true, position: 'top-end', icon: icono, title: titulo, showConfirmButton: false, timer: 2200, timerProgressBar: true });
+}
+
+const ventanaChatGeneral = document.getElementById('ventana-chat-general');
+const iconoChatGeneralFlotante = document.getElementById('icono-chat-general-flotante');
+const chatGeneralBienvenida = document.getElementById('chat-general-bienvenida');
+const listaMensajesGeneral = document.getElementById('chat-general-mensajes');
+const formChatGeneral = document.getElementById('form-chat-general');
+const inputChatGeneral = document.getElementById('chat-general-input');
+const historialGeneral = [];
+
+function alternarChatGeneral() {
+    const abierta = ventanaChatGeneral.classList.contains('flex');
+    if (abierta) {
+        ventanaChatGeneral.classList.remove('flex');
+        ventanaChatGeneral.classList.add('hidden');
+        iconoChatGeneralFlotante.className = 'fa-solid fa-graduation-cap';
+    } else {
+        ventanaChatGeneral.classList.remove('hidden');
+        ventanaChatGeneral.classList.add('flex');
+        iconoChatGeneralFlotante.className = 'fa-solid fa-xmark';
+        inputChatGeneral.focus();
+    }
+}
+
+function mostrarConversacionGeneral() {
+    if (!chatGeneralBienvenida.classList.contains('hidden')) {
+        chatGeneralBienvenida.classList.add('hidden');
+        listaMensajesGeneral.classList.remove('hidden');
+    }
+}
+
+document.querySelectorAll('.sugerencia-chat-general').forEach((boton) => {
+    boton.addEventListener('click', () => {
+        inputChatGeneral.value = boton.dataset.pregunta;
+        formChatGeneral.requestSubmit();
+    });
+});
+
+function agregarMensajeGeneral(rol, texto) {
+    const div = document.createElement('div');
+    const esUsuario = rol === 'user';
+    div.className = esUsuario ? 'text-right' : 'text-left';
+    div.innerHTML = '<span class="inline-block rounded px-3 py-2 text-sm max-w-[90%] '
+        + (esUsuario ? 'bg-marca-azul text-white' : 'bg-gray-100 text-gray-800')
+        + '">' + texto.replace(/</g, '&lt;') + '</span>';
+    listaMensajesGeneral.appendChild(div);
+    listaMensajesGeneral.scrollTop = listaMensajesGeneral.scrollHeight;
+    return div;
+}
+
+function agregarFuentesGeneral(citados) {
+    if (!citados || !citados.length) return;
+    const div = document.createElement('div');
+    div.className = 'text-left';
+    let html = '<div class="inline-flex flex-wrap gap-1 max-w-[90%]"><span class="text-[11px] text-gray-400 w-full">Fuentes:</span>';
+    citados.forEach((c) => {
+        html += '<a href="/articulos/ver.php?id=' + c.id + '" target="_blank" class="text-[11px] bg-marca-grisClaro/30 text-marca-azul px-2 py-0.5 rounded hover:bg-marca-grisClaro/60">'
+            + c.title.replace(/</g, '&lt;') + '</a>';
+    });
+    html += '</div>';
+    div.innerHTML = html;
+    listaMensajesGeneral.appendChild(div);
+    listaMensajesGeneral.scrollTop = listaMensajesGeneral.scrollHeight;
+}
+
+formChatGeneral.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const mensaje = inputChatGeneral.value.trim();
+    if (!mensaje) return;
+    mostrarConversacionGeneral();
+    agregarMensajeGeneral('user', mensaje);
+    inputChatGeneral.value = '';
+    inputChatGeneral.disabled = true;
+    const indicador = agregarMensajeGeneral('assistant', 'Buscando en los artículos…');
+
+    try {
+        const resp = await fetch('/articulos/chat_general.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: mensaje, history: historialGeneral }),
+        });
+        const datos = await resp.json();
+        if (!resp.ok) {
+            indicador.querySelector('span').textContent = datos.error || 'Ocurrió un error, intenta de nuevo.';
+            if (resp.status === 429) {
+                avisarChatGeneral('warning', 'Demasiadas preguntas seguidas, espera unos minutos');
+            } else {
+                avisarChatGeneral('error', 'No se pudo responder tu pregunta');
+            }
+        } else {
+            indicador.querySelector('span').textContent = datos.reply;
+            agregarFuentesGeneral(datos.citados);
+            historialGeneral.push({ role: 'user', content: mensaje });
+            historialGeneral.push({ role: 'assistant', content: datos.reply });
+        }
+    } catch (e) {
+        indicador.querySelector('span').textContent = 'No se pudo conectar. Intenta de nuevo.';
+        avisarChatGeneral('error', 'No se pudo conectar con el chat');
+    } finally {
+        inputChatGeneral.disabled = false;
+        inputChatGeneral.focus();
+    }
+});
+</script>
 
 </body>
 </html>
