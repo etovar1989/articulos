@@ -202,15 +202,21 @@ $descripcion = 'Eduteka: recursos, artículos y herramientas con IA para docente
     </div>
 </section>
 
+<!-- Divisor de acento: barra segmentada con la paleta complementaria (patron AccentDivider) -->
+<div class="flex h-2.5">
+    <div class="flex-1" style="background:#E9683B;"></div>
+    <div class="flex-1" style="background:#E4EB60;"></div>
+    <div class="flex-1" style="background:#4CB979;"></div>
+    <div class="flex-1" style="background:#865CF0;"></div>
+    <div class="flex-1" style="background:#5454E9;"></div>
+</div>
+
 <!-- HERRAMIENTAS -->
-<section id="herramientas" class="relative py-24" style="background: rgba(206,207,244,.18);">
-    <svg class="absolute top-0 left-0 w-full text-white" style="height:48px; transform:translateY(-1px);" viewBox="0 0 1440 48" preserveAspectRatio="none" aria-hidden="true">
-        <path fill="currentColor" d="M0,48 C 240,0 480,0 720,24 C 960,48 1200,48 1440,0 L1440,48 L0,48 Z"></path>
-    </svg>
-    <div class="max-w-6xl mx-auto px-4">
-        <span class="text-marca-azul text-xs font-bold tracking-widest uppercase">Herramientas</span>
-        <h2 class="text-3xl font-extrabold mt-2 max-w-xl">EdutekaLab: <strong>herramientas con IA</strong> para tu práctica docente</h2>
-        <p class="max-w-xl text-gray-500 mt-3 text-sm">Seis asistentes gratuitos que automatizan tareas del día a día, para que dediques más tiempo a enseñar.</p>
+<section id="herramientas" class="relative py-28" style="background:#14143A; clip-path: polygon(0 32px, 100% 0, 100% 100%, 0 100%);">
+    <div class="max-w-6xl mx-auto px-4 pt-6">
+        <span class="text-xs font-bold tracking-widest uppercase" style="color:#9494F5;">Herramientas</span>
+        <h2 class="text-3xl font-extrabold mt-2 max-w-xl text-white">EdutekaLab: <strong>herramientas con IA</strong> para tu práctica docente</h2>
+        <p class="max-w-xl mt-3 text-sm" style="color:#B7B7E8;">Seis asistentes gratuitos que automatizan tareas del día a día, para que dediques más tiempo a enseñar.</p>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
             <div class="<?= e(tw_card()) ?> p-7">
@@ -253,8 +259,17 @@ $descripcion = 'Eduteka: recursos, artículos y herramientas con IA para docente
     </div>
 </section>
 
+<!-- Divisor de acento: misma barra segmentada, orden invertido -->
+<div class="flex h-2.5">
+    <div class="flex-1" style="background:#5454E9;"></div>
+    <div class="flex-1" style="background:#865CF0;"></div>
+    <div class="flex-1" style="background:#4CB979;"></div>
+    <div class="flex-1" style="background:#E4EB60;"></div>
+    <div class="flex-1" style="background:#E9683B;"></div>
+</div>
+
 <!-- COMUNIDAD -->
-<section id="comunidad" class="py-24 border-t border-gray-200">
+<section id="comunidad" class="py-24" style="background:#F5F5FC;">
     <div class="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
         <div>
             <span class="text-marca-azul text-xs font-bold tracking-widest uppercase">Comunidad</span>
