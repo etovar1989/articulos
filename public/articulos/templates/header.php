@@ -57,12 +57,12 @@ $descripcion = $descripcion ?? 'Recursos educativos de Eduteka';
         <a href="/" class="flex items-center shrink-0">
             <img src="/img/logo-eduteka.png" alt="Eduteka" class="h-8 w-auto">
         </a>
-        <nav class="hidden md:flex items-center gap-7 text-sm font-semibold">
-            <a href="/#contenido" class="hover:text-marca-azul">Contenido</a>
-            <a href="/#herramientas" class="hover:text-marca-azul">Herramientas</a>
-            <a href="/#comunidad" class="hover:text-marca-azul">Comunidad</a>
-            <a href="/#icesi-eduteka" class="hover:text-marca-azul">Sobre Eduteka</a>
-            <a href="/#aliados" class="hover:text-marca-azul">Aliados</a>
+        <nav class="hidden md:flex items-center gap-2 text-sm font-semibold">
+            <a href="/articulos/index.php" class="bg-marca-azul/10 text-marca-azul px-3 py-1.5 rounded-full" aria-current="page">Contenido</a>
+            <a href="/#herramientas" class="px-3 py-1.5 rounded-full hover:text-marca-azul hover:bg-gray-50">Herramientas</a>
+            <a href="/#comunidad" class="px-3 py-1.5 rounded-full hover:text-marca-azul hover:bg-gray-50">Comunidad</a>
+            <a href="/#icesi-eduteka" class="px-3 py-1.5 rounded-full hover:text-marca-azul hover:bg-gray-50">Sobre Eduteka</a>
+            <a href="/#aliados" class="px-3 py-1.5 rounded-full hover:text-marca-azul hover:bg-gray-50">Aliados</a>
         </nav>
         <div class="flex items-center gap-3">
             <form action="/articulos/index.php" method="get" class="hidden md:flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-full px-4 py-2 w-60">
