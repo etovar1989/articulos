@@ -52,10 +52,25 @@ $descripcion = $descripcion ?? 'Recursos educativos de Eduteka';
     </style>
 </head>
 <body class="font-sans bg-white text-gray-900 text-left">
-<header class="bg-marca-azul no-imprimir">
-    <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-        <a href="/articulos/index.php" class="text-white font-extrabold tracking-tight">eduteka</a>
-        <span class="text-marca-grisClaro text-sm hidden sm:block">Llega más lejos</span>
+<header class="no-imprimir sticky top-0 z-40 bg-white border-b border-gray-100">
+    <div class="max-w-6xl mx-auto px-4 h-[76px] flex items-center justify-between gap-6">
+        <a href="/" class="flex items-center shrink-0">
+            <img src="/img/logo-eduteka.png" alt="Eduteka" class="h-8 w-auto">
+        </a>
+        <nav class="hidden md:flex items-center gap-7 text-sm font-semibold">
+            <a href="/#contenido" class="hover:text-marca-azul">Contenido</a>
+            <a href="/#herramientas" class="hover:text-marca-azul">Herramientas</a>
+            <a href="/#comunidad" class="hover:text-marca-azul">Comunidad</a>
+            <a href="/#icesi-eduteka" class="hover:text-marca-azul">Sobre Eduteka</a>
+            <a href="/#aliados" class="hover:text-marca-azul">Aliados</a>
+        </nav>
+        <div class="flex items-center gap-3">
+            <form action="/articulos/index.php" method="get" class="hidden md:flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-full px-4 py-2 w-60">
+                <i class="fa-solid fa-magnifying-glass text-gray-400 text-sm"></i>
+                <input type="text" name="q" placeholder="Buscar artículos, temas..." class="bg-transparent outline-none text-sm w-full">
+            </form>
+            <a href="/articulos/index.php" class="<?= e(tw_btn('primario')) ?>">Pregúntale a Eduteka</a>
+        </div>
     </div>
 </header>
 <main class="max-w-4xl mx-auto px-4 py-8">
