@@ -8,6 +8,6 @@ class Home
 {
     public function index(Base $f3): void
     {
-        $f3->reroute('/articulos/index.php');
+        require $f3->get('ROOT_DIR') . '/public/inicio.php';
     }
 }
