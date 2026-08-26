@@ -250,10 +250,10 @@ $descripcion = 'Eduteka: recursos, artículos y herramientas con IA para docente
                 <p class="text-sm text-gray-500">Diagnostica el nivel de competencias TIC de tu institución.</p>
             </div>
             <div class="rounded-lg bg-marca-azul p-7">
-                <div class="w-12 h-12 flex items-center justify-center bg-white/20 text-white mb-4"><i class="fa-solid fa-comment-dots fa-lg"></i></div>
+                <div class="w-12 h-12 flex items-center justify-center bg-white/20 text-white mb-4"><i class="fa-solid fa-square-root-variable fa-lg"></i></div>
                 <span class="block text-2xl font-extrabold text-white/30 mb-3">06</span>
-                <h3 class="font-bold mb-2 text-white">SEE</h3>
-                <p class="text-sm text-white/75">Sistema Experto: resuelve dudas pedagógicas al instante, con IA.</p>
+                <h3 class="font-bold mb-2 text-white">Matemática Interactiva</h3>
+                <p class="text-sm text-white/75">Simulaciones y actividades para explorar las matemáticas aplicadas a la vida real.</p>
             </div>
         </div>
     </div>
