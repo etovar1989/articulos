@@ -88,15 +88,12 @@ $descripcion = 'Eduteka: recursos, artículos y herramientas con IA para docente
             <a href="#contenido" class="px-3 py-1.5 rounded-full hover:text-marca-azul hover:bg-gray-50">Contenido</a>
             <a href="#herramientas" class="px-3 py-1.5 rounded-full hover:text-marca-azul hover:bg-gray-50">Herramientas</a>
             <a href="#comunidad" class="px-3 py-1.5 rounded-full hover:text-marca-azul hover:bg-gray-50">Comunidad</a>
-            <a href="#icesi-eduteka" class="px-3 py-1.5 rounded-full hover:text-marca-azul hover:bg-gray-50">Sobre Eduteka</a>
-            <a href="#aliados" class="px-3 py-1.5 rounded-full hover:text-marca-azul hover:bg-gray-50">Aliados</a>
         </nav>
         <div class="flex items-center gap-3">
             <form action="/articulos/index.php" method="get" class="hidden md:flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-full px-4 py-2 w-60">
                 <i class="fa-solid fa-magnifying-glass text-gray-400 text-sm"></i>
                 <input type="text" name="q" placeholder="Buscar artículos, temas..." class="bg-transparent outline-none text-sm w-full">
             </form>
-            <a href="/articulos/index.php" class="<?= e(tw_btn('primario')) ?>">Pregúntale a Eduteka</a>
         </div>
     </div>
 </header>
