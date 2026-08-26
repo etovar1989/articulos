@@ -246,7 +246,7 @@ $descripcion = 'Eduteka: recursos, artículos y herramientas con IA para docente
             <div class="<?= e(tw_card()) ?> p-7">
                 <div class="w-12 h-12 flex items-center justify-center bg-marca-azul text-white mb-4"><i class="fa-solid fa-chart-simple fa-lg"></i></div>
                 <span class="block text-2xl font-extrabold text-marca-grisClaro mb-3">05</span>
-                <h3 class="font-bold mb-2">MÁTICA</h3>
+                <h3 class="font-bold mb-2">MITICA</h3>
                 <p class="text-sm text-gray-500">Diagnostica el nivel de competencias TIC de tu institución.</p>
             </div>
             <div class="rounded-lg bg-marca-azul p-7">
@@ -418,7 +418,7 @@ $descripcion = 'Eduteka: recursos, artículos y herramientas con IA para docente
                 <a href="#" class="text-white/70 hover:text-white">RubriK</a>
                 <a href="#" class="text-white/70 hover:text-white">Planeo</a>
                 <a href="#" class="text-white/70 hover:text-white">Gamificación IA</a>
-                <a href="#" class="text-white/70 hover:text-white">MÁTICA</a>
+                <a href="#" class="text-white/70 hover:text-white">MITICA</a>
                 <a href="#" class="text-white/70 hover:text-white">Eventos Eduteka</a>
             </div>
         </div>

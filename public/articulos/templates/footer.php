@@ -37,7 +37,7 @@
                     <a href="/#herramientas" class="text-white/70 hover:text-white">RubriK</a>
                     <a href="/#herramientas" class="text-white/70 hover:text-white">Planeo</a>
                     <a href="/#herramientas" class="text-white/70 hover:text-white">Gamificación IA</a>
-                    <a href="/#herramientas" class="text-white/70 hover:text-white">MÁTICA</a>
+                    <a href="/#herramientas" class="text-white/70 hover:text-white">MITICA</a>
                     <a href="/#comunidad" class="text-white/70 hover:text-white">Eventos Eduteka</a>
                 </div>
             </div>
