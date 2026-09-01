@@ -6,6 +6,12 @@ $root = dirname(__DIR__);
 require $root . '/vendor/autoload.php';
 chdir($root);
 
+// Marca las vistas bajo public/ como "cargadas desde el front controller" — cada
+// vista comprueba esta constante para no ser ejecutable si alguien la pide por URL
+// directa (las vistas viven bajo public/ pero solo deben renderizarse via require
+// desde un controlador, nunca como endpoint propio).
+define('EDUTEKA_APP', true);
+
 $f3 = \Base::instance();
 $f3->set('ROOT_DIR', $root);
 $f3->config('app/config.ini');
@@ -13,8 +19,6 @@ if (is_file($root . '/app/config.local.ini')) {
     $f3->config('app/config.local.ini');
 }
 $f3->config('app/routes.ini');
-
-$f3->set('DB', new \DB\SQL($f3->get('DB_DSN'), $f3->get('DB_USER'), $f3->get('DB_PASS')));
 
 // JSON para /api/*, pagina amigable para el resto. El trace solo sale con DEBUG >= 2,
 // para que produccion (DEBUG=0) nunca filtre rutas internas.

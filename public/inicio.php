@@ -1,9 +1,8 @@
 <?php
 declare(strict_types=1);
-require __DIR__ . '/articulos/lib/helpers.php';
-require __DIR__ . '/articulos/lib/db.php';
+/** @var \Base $f3 */
 
-$pdo = db();
+$pdo = \App\Lib\Db::pdo($f3);
 
 $totalArticulos = (int) $pdo->query("SELECT count(*) FROM articles WHERE estado = 'publicado'")->fetchColumn();
 
