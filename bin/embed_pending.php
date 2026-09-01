@@ -1,21 +1,23 @@
 <?php
 // Cola de indexacion RAG: procesa articulos con rag_status='pending', generando su
 // embedding en embeddings_small via la MISMA funcion que usa el admin al guardar un
-// articulo (reindexar_embedding_articulo, en articulos/lib/busqueda.php) — no se
-// reimplementa la logica, se reutiliza tal cual para no divergir de produccion.
-// Pensado para correr por cron cada 5 min (ver estandar de infraestructura); tambien
-// sirve para el llenado inicial en desarrollo.
+// articulo (SearchModel::reindexarEmbeddingArticulo) — no se reimplementa la logica,
+// se reutiliza tal cual para no divergir de produccion.
+// Pensado para correr por cron cada 5 min; tambien sirve para el llenado inicial en
+// desarrollo.
 
 declare(strict_types=1);
 
-$publicRoot = dirname(__DIR__) . '/public';
-require $publicRoot . '/articulos/vendor/autoload.php';
-require $publicRoot . '/articulos/lib/helpers.php';
-require $publicRoot . '/articulos/lib/db.php';
-require $publicRoot . '/articulos/lib/busqueda.php';
+use App\Lib\Db;
+use App\Models\SearchModel;
 
-$config = require $publicRoot . '/articulos/config/config.php';
-$pdo = db();
+$f3 = require __DIR__ . '/cli_bootstrap.php';
+
+$pdo = Db::pdo($f3);
+$config = [
+    'openai_api_key' => (string) $f3->get('OPENAI_API_KEY'),
+    'chat_model' => (string) $f3->get('OPENAI_CHAT_MODEL'),
+];
 
 $quiet = in_array('--quiet', $argv, true);
 
@@ -33,7 +35,7 @@ echo count($pendientes) . " articulos pendientes de indexar.\n";
 $ok = 0;
 $fallidos = 0;
 foreach ($pendientes as $a) {
-    $exito = reindexar_embedding_articulo($pdo, $config, (int) $a['id'], $a['title'], $a['body']);
+    $exito = SearchModel::reindexarEmbeddingArticulo($pdo, $config, (int) $a['id'], $a['title'], $a['body']);
     if ($exito) {
         $ok++;
     } else {
