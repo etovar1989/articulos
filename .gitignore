@@ -3,6 +3,9 @@
 /app/config.local.ini
 /public/articulos/config/config.php
 /public/admin/config/config.php
+/.vscode/sftp.json
+/config/database.php
+/config/f3.ini
 
 # Dependencias PHP
 /vendor/
