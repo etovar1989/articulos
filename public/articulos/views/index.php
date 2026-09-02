@@ -1,58 +1,36 @@
 <?php
 declare(strict_types=1);
-require __DIR__ . '/lib/helpers.php';
-require __DIR__ . '/lib/db.php';
-require __DIR__ . '/lib/busqueda.php';
-
-$config = require __DIR__ . '/config/config.php';
-$pdo = db();
-
-$q = trim((string) ($_GET['q'] ?? ''));
-$categoriaId = (int) ($_GET['categoria_id'] ?? 0);
-$etiquetaId = (int) ($_GET['etiqueta_id'] ?? 0);
-
-$modo = 'inicio';
-if ($q !== '') {
-    $modo = 'busqueda';
-} elseif ($categoriaId > 0) {
-    $modo = 'categoria';
-} elseif ($etiquetaId > 0) {
-    $modo = 'etiqueta';
-}
-
-$resultadosBusqueda = [];
-$errorBusqueda = null;
-$sintesis = null;
-
-$categoriaNombre = null;
-$etiquetaNombre = null;
-$listado = [];
-$pagina = max(1, (int) ($_GET['pagina'] ?? 1));
-$porPagina = 12;
-$totalPaginas = 1;
-
-// Tags de un conjunto de artículos en una sola consulta (evita N+1 por tarjeta).
-function obtener_tags_por_articulos(PDO $pdo, array $ids): array
-{
-    $ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
-    if (!$ids) {
-        return [];
-    }
-    $marcadores = implode(',', array_fill(0, count($ids), '?'));
-    $stmt = $pdo->prepare("
-        SELECT at2.article_id, t.id, t.name
-        FROM article_tags at2
-        JOIN tags t ON t.id = at2.tag_id
-        WHERE at2.article_id IN ($marcadores)
-        ORDER BY t.name
-    ");
-    $stmt->execute($ids);
-    $porArticulo = [];
-    foreach ($stmt->fetchAll() as $fila) {
-        $porArticulo[$fila['article_id']][] = $fila;
-    }
-    return $porArticulo;
-}
+if (!defined('EDUTEKA_APP')) { http_response_code(404); exit; }
+/**
+ * Vista del listado/catalogo de articulos. Recibe todos los datos ya resueltos
+ * por App\Controllers\ArticleController::index() via App\Lib\View::render()
+ * (extract de este array a variables locales) — sin queries ni logica de negocio
+ * aqui, solo presentacion.
+ *
+ * @var string $q
+ * @var string $modo
+ * @var int $categoriaId
+ * @var int $etiquetaId
+ * @var array $resultadosBusqueda
+ * @var string|null $errorBusqueda
+ * @var array|null $sintesis
+ * @var array $tagsBusqueda
+ * @var string|null $categoriaNombre
+ * @var string|null $etiquetaNombre
+ * @var array $listado
+ * @var array $tagsListado
+ * @var int $pagina
+ * @var int $totalPaginas
+ * @var array $catalogo
+ * @var array $categorias
+ * @var array $deInteres
+ * @var array $tagsCatalogo
+ * @var array $tagsInteres
+ * @var int $totalCatalogo
+ * @var int $totalPaginasCatalogo
+ * @var string $titulo
+ * @var string $descripcion
+ */
 
 // Limpieza rápida de sintaxis Markdown para vistas previas (no usa Parsedown:
 // una tarjeta de listado no necesita un parse completo a HTML solo para
@@ -110,175 +88,7 @@ function tarjeta_articulo(array $a, array $tags = []): void
     <?php
 }
 
-if ($modo === 'busqueda') {
-    // Gobernanza: rate limit por IP antes de gastar en la API (igual que el chat).
-    $ip = ip_cliente();
-    $LIMITE = 20;
-    $VENTANA_MIN = 10;
-    $check = $pdo->prepare("
-        SELECT count(*) FROM ai_usage
-        WHERE ip = :ip AND kind = 'busqueda_articulo' AND created_at > now() - make_interval(mins => :ventana)
-    ");
-    $check->execute(['ip' => $ip, 'ventana' => $VENTANA_MIN]);
-    if ((int) $check->fetchColumn() >= $LIMITE) {
-        $errorBusqueda = 'Demasiadas búsquedas seguidas. Espera unos minutos e intenta de nuevo.';
-    } else {
-        $vecConsulta = embeber_consulta($pdo, $config, $q);
-        if ($vecConsulta === null) {
-            $errorBusqueda = 'No se pudo completar la búsqueda en este momento. Intenta de nuevo.';
-        } else {
-            $resultadosBusqueda = buscar_articulos_similares($pdo, $vecConsulta, 12);
-            try {
-                $pdo->prepare("INSERT INTO ai_usage (origen, kind, ip) VALUES ('busqueda_publica', 'busqueda_articulo', :ip)")
-                    ->execute(['ip' => $ip]);
-            } catch (Throwable $e) {
-                error_log('index.php error registrando ai_usage de búsqueda: ' . $e->getMessage());
-            }
-            // Fail-open (rag-baseline principio 4): si la síntesis con IA falla,
-            // la lista de resultados igual se muestra normalmente.
-            $sintesis = obtener_sintesis_busqueda($pdo, $config, $q, $resultadosBusqueda);
-
-            try {
-                $pdo->prepare('
-                    INSERT INTO busqueda_log (consulta, n_resultados, con_sintesis, ip)
-                    VALUES (:c, :n, :s, :ip)
-                ')->execute([
-                    'c' => $q,
-                    'n' => count($resultadosBusqueda),
-                    's' => $sintesis !== null && $sintesis['respuesta'] !== '',
-                    'ip' => $ip,
-                ]);
-            } catch (Throwable $e) {
-                error_log('index.php error registrando busqueda_log: ' . $e->getMessage());
-            }
-        }
-    }
-    $tagsBusqueda = obtener_tags_por_articulos($pdo, array_column($resultadosBusqueda, 'id'));
-} elseif ($modo === 'categoria') {
-    $cat = $pdo->prepare('SELECT name FROM categories WHERE id = :id');
-    $cat->execute(['id' => $categoriaId]);
-    $categoriaNombre = $cat->fetchColumn() ?: null;
-
-    $total = $pdo->prepare("SELECT count(*) FROM articles WHERE category_id = :id AND estado = 'publicado'");
-    $total->execute(['id' => $categoriaId]);
-    $totalPaginas = (int) max(1, ceil(((int) $total->fetchColumn()) / $porPagina));
-    $offset = ($pagina - 1) * $porPagina;
-
-    $stmt = $pdo->prepare("
-        SELECT a.id, a.title, a.slug, a.summary, left(a.body, 5000) AS extracto, a.article_date
-        FROM articles a
-        WHERE a.category_id = :id AND a.estado = 'publicado'
-        ORDER BY a.article_date DESC NULLS LAST, a.id DESC
-        LIMIT :lim OFFSET :off
-    ");
-    $stmt->bindValue('id', $categoriaId, PDO::PARAM_INT);
-    $stmt->bindValue('lim', $porPagina, PDO::PARAM_INT);
-    $stmt->bindValue('off', $offset, PDO::PARAM_INT);
-    $stmt->execute();
-    $listado = $stmt->fetchAll();
-    $tagsListado = obtener_tags_por_articulos($pdo, array_column($listado, 'id'));
-} elseif ($modo === 'etiqueta') {
-    $et = $pdo->prepare('SELECT name FROM tags WHERE id = :id');
-    $et->execute(['id' => $etiquetaId]);
-    $etiquetaNombre = $et->fetchColumn() ?: null;
-
-    $total = $pdo->prepare("
-        SELECT count(*) FROM articles a
-        JOIN article_tags at2 ON at2.article_id = a.id
-        WHERE at2.tag_id = :id AND a.estado = 'publicado'
-    ");
-    $total->execute(['id' => $etiquetaId]);
-    $totalPaginas = (int) max(1, ceil(((int) $total->fetchColumn()) / $porPagina));
-    $offset = ($pagina - 1) * $porPagina;
-
-    $stmt = $pdo->prepare("
-        SELECT a.id, a.title, a.slug, a.summary, left(a.body, 5000) AS extracto, a.article_date
-        FROM articles a
-        JOIN article_tags at2 ON at2.article_id = a.id
-        WHERE at2.tag_id = :id AND a.estado = 'publicado'
-        ORDER BY a.article_date DESC NULLS LAST, a.id DESC
-        LIMIT :lim OFFSET :off
-    ");
-    $stmt->bindValue('id', $etiquetaId, PDO::PARAM_INT);
-    $stmt->bindValue('lim', $porPagina, PDO::PARAM_INT);
-    $stmt->bindValue('off', $offset, PDO::PARAM_INT);
-    $stmt->execute();
-    $listado = $stmt->fetchAll();
-    $tagsListado = obtener_tags_por_articulos($pdo, array_column($listado, 'id'));
-}
-
-// --- Datos de la página de inicio (solo se calculan si hace falta) ---
-// Las etiquetas (~3.390) NO se consultan aquí: se cargan aparte, de forma
-// diferida vía JS (etiquetas_todas.php) para no inflar esta página con ~1 MB
-// de HTML en cada carga — ver el fragmento al final del archivo.
-$catalogo = $categorias = $deInteres = [];
-$tagsCatalogo = $tagsInteres = [];
-$totalCatalogo = 0;
-$totalPaginasCatalogo = 1;
-if ($modo === 'inicio') {
-    // Catálogo completo, paginado (reemplaza el antiguo "recientes" limitado a 8).
-    $totalCatalogo = (int) $pdo->query("SELECT count(*) FROM articles WHERE estado = 'publicado'")->fetchColumn();
-    $totalPaginasCatalogo = (int) max(1, ceil($totalCatalogo / $porPagina));
-    $offsetCatalogo = ($pagina - 1) * $porPagina;
-
-    $stmt = $pdo->prepare("
-        SELECT a.id, a.title, a.slug, a.summary, left(a.body, 5000) AS extracto, a.article_date, c.name AS categoria_nombre
-        FROM articles a
-        LEFT JOIN categories c ON c.id = a.category_id
-        WHERE a.estado = 'publicado'
-        ORDER BY a.article_date DESC NULLS LAST, a.id DESC
-        LIMIT :lim OFFSET :off
-    ");
-    $stmt->bindValue('lim', $porPagina, PDO::PARAM_INT);
-    $stmt->bindValue('off', $offsetCatalogo, PDO::PARAM_INT);
-    $stmt->execute();
-    $catalogo = $stmt->fetchAll();
-    $tagsCatalogo = obtener_tags_por_articulos($pdo, array_column($catalogo, 'id'));
-
-    $categorias = $pdo->query("
-        SELECT c.id, c.name, count(a.id) AS n
-        FROM categories c
-        JOIN articles a ON a.category_id = c.id AND a.estado = 'publicado'
-        GROUP BY c.id, c.name
-        ORDER BY n DESC
-        LIMIT 12
-    ")->fetchAll();
-
-    // "De interés" = lo que más preguntas genera en el chat (una señal real de
-    // interés de los usuarios). Si todavía no hay suficiente actividad, se
-    // rellena con artículos al azar para que la sección nunca quede vacía.
-    $deInteres = $pdo->query("
-        SELECT a.id, a.title, a.slug, a.summary, left(a.body, 5000) AS extracto, c.name AS categoria_nombre, count(cl.id) AS n_preguntas
-        FROM articles a
-        JOIN chat_log cl ON cl.article_id = a.id
-        LEFT JOIN categories c ON c.id = a.category_id
-        WHERE a.estado = 'publicado'
-        GROUP BY a.id, a.title, a.slug, a.summary, a.body, c.name
-        ORDER BY n_preguntas DESC
-        LIMIT 6
-    ")->fetchAll();
-
-    if (count($deInteres) < 6) {
-        $idsExcluir = array_column($deInteres, 'id') ?: [0];
-        $marcadores = implode(',', array_fill(0, count($idsExcluir), '?'));
-        $faltantes = 6 - count($deInteres);
-        $relleno = $pdo->prepare("
-            SELECT a.id, a.title, a.slug, a.summary, left(a.body, 5000) AS extracto, c.name AS categoria_nombre, 0 AS n_preguntas
-            FROM articles a
-            LEFT JOIN categories c ON c.id = a.category_id
-            WHERE a.estado = 'publicado' AND a.id NOT IN ($marcadores)
-            ORDER BY random()
-            LIMIT ?
-        ");
-        $relleno->execute([...$idsExcluir, $faltantes]);
-        $deInteres = array_merge($deInteres, $relleno->fetchAll());
-    }
-    $tagsInteres = obtener_tags_por_articulos($pdo, array_column($deInteres, 'id'));
-}
-
-$titulo = 'Artículos';
-$descripcion = 'Explora los artículos de Eduteka por categoría, etiqueta o con el buscador semántico.';
-require __DIR__ . '/templates/header.php';
+require __DIR__ . '/../templates/header.php';
 ?>
 
 <!-- Buscador semántico -->
@@ -632,4 +442,4 @@ formChatGeneral.addEventListener('submit', async (ev) => {
 });
 </script>
 
-<?php require __DIR__ . '/templates/footer.php'; ?>
+<?php require __DIR__ . '/../templates/footer.php'; ?>

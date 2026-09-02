@@ -5,12 +5,17 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Lib\Db;
+use App\Lib\View;
+use App\Models\ArticleModel;
+use App\Models\CategoryModel;
 use App\Models\ChatModel;
 use App\Models\RagModel;
 use App\Models\SearchModel;
+use App\Models\TagModel;
 use Base;
 use Dompdf\Dompdf;
 use Dompdf\Options;
+use Throwable;
 
 final class ArticleController
 {
@@ -20,6 +25,184 @@ final class ArticleController
             'openai_api_key' => (string) $f3->get('OPENAI_API_KEY'),
             'chat_model' => (string) $f3->get('OPENAI_CHAT_MODEL'),
         ];
+    }
+
+    // GET /articulos/index.php — listado/catalogo. Cuatro modos segun query string:
+    // busqueda (?q=), categoria (?categoria_id=), etiqueta (?etiqueta_id=), o el
+    // catalogo completo paginado por defecto.
+    public function index(Base $f3): void
+    {
+        $pdo = Db::pdo($f3);
+        $config = $this->config($f3);
+
+        $q = trim((string) ($_GET['q'] ?? ''));
+        $categoriaId = (int) ($_GET['categoria_id'] ?? 0);
+        $etiquetaId = (int) ($_GET['etiqueta_id'] ?? 0);
+
+        $modo = 'inicio';
+        if ($q !== '') {
+            $modo = 'busqueda';
+        } elseif ($categoriaId > 0) {
+            $modo = 'categoria';
+        } elseif ($etiquetaId > 0) {
+            $modo = 'etiqueta';
+        }
+
+        $resultadosBusqueda = [];
+        $errorBusqueda = null;
+        $sintesis = null;
+        $tagsBusqueda = [];
+
+        $categoriaNombre = null;
+        $etiquetaNombre = null;
+        $listado = [];
+        $tagsListado = [];
+        $pagina = max(1, (int) ($_GET['pagina'] ?? 1));
+        $porPagina = 12;
+        $totalPaginas = 1;
+
+        $catalogo = $categorias = $deInteres = [];
+        $tagsCatalogo = $tagsInteres = [];
+        $totalCatalogo = 0;
+        $totalPaginasCatalogo = 1;
+
+        if ($modo === 'busqueda') {
+            // Gobernanza: rate limit por IP antes de gastar en la API (igual que el chat).
+            $ip = ip_cliente();
+            if (ChatModel::limiteExcedido($pdo, $ip, 'busqueda_articulo')) {
+                $errorBusqueda = 'Demasiadas búsquedas seguidas. Espera unos minutos e intenta de nuevo.';
+            } else {
+                $vecConsulta = SearchModel::embeberConsulta($pdo, $config, $q);
+                if ($vecConsulta === null) {
+                    $errorBusqueda = 'No se pudo completar la búsqueda en este momento. Intenta de nuevo.';
+                } else {
+                    $resultadosBusqueda = SearchModel::buscarArticulosSimilares($pdo, $vecConsulta, 12);
+                    try {
+                        $pdo->prepare("INSERT INTO ai_usage (origen, kind, ip) VALUES ('busqueda_publica', 'busqueda_articulo', :ip)")
+                            ->execute(['ip' => $ip]);
+                    } catch (Throwable $e) {
+                        error_log('ArticleController::index error registrando ai_usage de búsqueda: ' . $e->getMessage());
+                    }
+                    // Fail-open: si la síntesis con IA falla, la lista de resultados
+                    // igual se muestra normalmente.
+                    $sintesis = SearchModel::obtenerSintesisBusqueda($pdo, $config, $q, $resultadosBusqueda);
+
+                    try {
+                        $pdo->prepare('
+                            INSERT INTO busqueda_log (consulta, n_resultados, con_sintesis, ip)
+                            VALUES (:c, :n, :s, :ip)
+                        ')->execute([
+                            'c' => $q,
+                            'n' => count($resultadosBusqueda),
+                            's' => $sintesis !== null && $sintesis['respuesta'] !== '',
+                            'ip' => $ip,
+                        ]);
+                    } catch (Throwable $e) {
+                        error_log('ArticleController::index error registrando busqueda_log: ' . $e->getMessage());
+                    }
+                }
+            }
+            $tagsBusqueda = ArticleModel::tagsPorArticulos($pdo, array_column($resultadosBusqueda, 'id'));
+        } elseif ($modo === 'categoria') {
+            $categoriaNombre = CategoryModel::nombrePorId($pdo, $categoriaId);
+            $resultado = ArticleModel::porCategoria($pdo, $categoriaId, $pagina, $porPagina);
+            $listado = $resultado['items'];
+            $totalPaginas = $resultado['totalPaginas'];
+            $tagsListado = ArticleModel::tagsPorArticulos($pdo, array_column($listado, 'id'));
+        } elseif ($modo === 'etiqueta') {
+            $etiquetaNombre = TagModel::nombrePorId($pdo, $etiquetaId);
+            $resultado = ArticleModel::porEtiqueta($pdo, $etiquetaId, $pagina, $porPagina);
+            $listado = $resultado['items'];
+            $totalPaginas = $resultado['totalPaginas'];
+            $tagsListado = ArticleModel::tagsPorArticulos($pdo, array_column($listado, 'id'));
+        } else {
+            // Catálogo completo, paginado; categorías top; "de interés" (los que
+            // más preguntas generan en el chat, rellenado con aleatorios si hace falta).
+            $resultado = ArticleModel::catalogo($pdo, $pagina, $porPagina);
+            $catalogo = $resultado['items'];
+            $totalCatalogo = $resultado['total'];
+            $totalPaginasCatalogo = $resultado['totalPaginas'];
+            $tagsCatalogo = ArticleModel::tagsPorArticulos($pdo, array_column($catalogo, 'id'));
+
+            $categorias = CategoryModel::topPorConteo($pdo, 12);
+
+            $deInteres = ArticleModel::deInteres($pdo, 6);
+            $tagsInteres = ArticleModel::tagsPorArticulos($pdo, array_column($deInteres, 'id'));
+        }
+
+        View::render('articulos/views/index.php', [
+            'q' => $q,
+            'modo' => $modo,
+            'categoriaId' => $categoriaId,
+            'etiquetaId' => $etiquetaId,
+            'resultadosBusqueda' => $resultadosBusqueda,
+            'errorBusqueda' => $errorBusqueda,
+            'sintesis' => $sintesis,
+            'tagsBusqueda' => $tagsBusqueda,
+            'categoriaNombre' => $categoriaNombre,
+            'etiquetaNombre' => $etiquetaNombre,
+            'listado' => $listado,
+            'tagsListado' => $tagsListado,
+            'pagina' => $pagina,
+            'totalPaginas' => $totalPaginas,
+            'catalogo' => $catalogo,
+            'categorias' => $categorias,
+            'deInteres' => $deInteres,
+            'tagsCatalogo' => $tagsCatalogo,
+            'tagsInteres' => $tagsInteres,
+            'totalCatalogo' => $totalCatalogo,
+            'totalPaginasCatalogo' => $totalPaginasCatalogo,
+            'titulo' => 'Artículos',
+            'descripcion' => 'Explora los artículos de Eduteka por categoría, etiqueta o con el buscador semántico.',
+        ]);
+    }
+
+    // GET /articulos/ver.php?id= — detalle de un articulo publicado.
+    public function show(Base $f3): void
+    {
+        $pdo = Db::pdo($f3);
+
+        $id = (int) ($_GET['id'] ?? 0);
+        $articulo = ArticleModel::buscarPublicadoPorId($pdo, $id);
+
+        if (!$articulo) {
+            http_response_code(404);
+            View::render('articulos/views/ver.php', ['articulo' => null, 'titulo' => 'Artículo no encontrado']);
+            return;
+        }
+
+        $etiquetas = ArticleModel::tagsDeArticulo($pdo, $id);
+        $relacionados = ArticleModel::relacionados($pdo, $id, $articulo['category_id'] ? (int) $articulo['category_id'] : null, 5);
+
+        $titulo = $articulo['title'];
+        $descripcion = $articulo['summary'] ?: mb_substr(strip_tags($articulo['body']), 0, 160);
+        $urlCanonica = rtrim((string) $f3->get('SITE_URL'), '/') . '/articulos/ver.php?id=' . $id;
+        $contenidoHtml = markdown_render($articulo['body']);
+
+        // Sugerencias del chat: precalculadas por IA una sola vez y guardadas en
+        // articles.chat_sugerencias. Si un articulo aun no las tiene, se usa un
+        // respaldo generico para que el widget nunca se vea vacio.
+        $sugerenciasChat = $articulo['chat_sugerencias'] ? json_decode($articulo['chat_sugerencias'], true) : null;
+        if (!$sugerenciasChat || count($sugerenciasChat) < 4) {
+            $sugerenciasChat = [
+                ['etiqueta' => 'Ideas para el aula', 'pregunta' => 'Dame ideas para implementar esto en el aula'],
+                ['etiqueta' => 'Adaptación y diferenciación', 'pregunta' => '¿Cómo puedo adaptar esto a distintos niveles o necesidades de mis estudiantes?'],
+                ['etiqueta' => 'Estrategias de evaluación', 'pregunta' => '¿Qué estrategias de evaluación me recomiendas para este contenido?'],
+                ['etiqueta' => 'Fundamentos pedagógicos', 'pregunta' => 'Resume los fundamentos pedagógicos de este artículo'],
+            ];
+        }
+
+        View::render('articulos/views/ver.php', [
+            'articulo' => $articulo,
+            'id' => $id,
+            'etiquetas' => $etiquetas,
+            'relacionados' => $relacionados,
+            'titulo' => $titulo,
+            'descripcion' => $descripcion,
+            'urlCanonica' => $urlCanonica,
+            'contenidoHtml' => $contenidoHtml,
+            'sugerenciasChat' => $sugerenciasChat,
+        ]);
     }
 
     // POST /articulos/chat.php — chat por artículo: responde ÚNICAMENTE con base en

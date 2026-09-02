@@ -1,77 +1,31 @@
 <?php
 declare(strict_types=1);
-require __DIR__ . '/lib/helpers.php';
-require __DIR__ . '/lib/db.php';
+if (!defined('EDUTEKA_APP')) { http_response_code(404); exit; }
+/**
+ * Vista de detalle de un articulo. Recibe todos los datos ya resueltos por
+ * App\Controllers\ArticleController::show() via App\Lib\View::render().
+ *
+ * @var array|null $articulo null cuando no se encontro (404)
+ * @var int $id
+ * @var array $etiquetas
+ * @var array $relacionados
+ * @var string $titulo
+ * @var string|null $descripcion
+ * @var string|null $urlCanonica
+ * @var string|null $contenidoHtml
+ * @var array|null $sugerenciasChat
+ */
 
-$config = require __DIR__ . '/config/config.php';
-$pdo = db();
-
-$id = (int) ($_GET['id'] ?? 0);
-$stmt = $pdo->prepare("
-    SELECT a.*, c.name AS categoria_nombre
-    FROM articles a
-    LEFT JOIN categories c ON c.id = a.category_id
-    WHERE a.id = :id AND a.estado = 'publicado'
-");
-$stmt->execute(['id' => $id]);
-$articulo = $stmt->fetch();
-
-if (!$articulo) {
-    http_response_code(404);
-    $titulo = 'Artículo no encontrado';
-    require __DIR__ . '/templates/header.php';
+if ($articulo === null) {
+    require __DIR__ . '/../templates/header.php';
     echo '<p class="text-gray-500">No encontramos ese artículo, o no está publicado.</p>';
-    require __DIR__ . '/templates/footer.php';
-    exit;
+    require __DIR__ . '/../templates/footer.php';
+    return;
 }
 
-$tagsStmt = $pdo->prepare('
-    SELECT t.id, t.name FROM tags t
-    JOIN article_tags at2 ON at2.tag_id = t.id
-    WHERE at2.article_id = :id
-    ORDER BY t.name
-');
-$tagsStmt->execute(['id' => $id]);
-$etiquetas = $tagsStmt->fetchAll();
-
-// Artículos relacionados: KNN real con pgvector (índice HNSW de
-// embeddings_small), acotado a la misma categoría del artículo actual.
-$relacionados = [];
-if ($articulo['category_id']) {
-    $otros = $pdo->prepare('
-        SELECT a.id, a.title, a.slug,
-               (es.embedding <=> (SELECT embedding FROM embeddings_small WHERE article_id = :id)) AS distancia
-        FROM embeddings_small es
-        JOIN articles a ON a.id = es.article_id
-        WHERE a.category_id = :cat AND a.id != :id2 AND a.estado = \'publicado\'
-        ORDER BY distancia ASC
-        LIMIT 5
-    ');
-    $otros->execute(['id' => $id, 'cat' => $articulo['category_id'], 'id2' => $id]);
-    $relacionados = $otros->fetchAll();
-}
-
-$titulo = $articulo['title'];
-$descripcion = $articulo['summary'] ?: mb_substr(strip_tags($articulo['body']), 0, 160);
-$urlCanonica = rtrim($config['site_base_url'], '/') . '/articulos/ver.php?id=' . $id;
-$contenidoHtml = markdown_render($articulo['body']);
-
-// Sugerencias del chat: precalculadas por IA una sola vez (tools/build_sugerencias_chat.py)
-// y guardadas en articles.chat_sugerencias. Si un artículo aún no las tiene (p. ej. uno
-// creado desde el admin después de la corrida masiva), se usa un respaldo genérico para
-// que el widget nunca se vea vacío.
 $iconosSugerencias = ['fa-solid fa-lightbulb', 'fa-solid fa-people-group', 'fa-regular fa-clipboard', 'fa-solid fa-book-open'];
-$sugerenciasChat = $articulo['chat_sugerencias'] ? json_decode($articulo['chat_sugerencias'], true) : null;
-if (!$sugerenciasChat || count($sugerenciasChat) < 4) {
-    $sugerenciasChat = [
-        ['etiqueta' => 'Ideas para el aula', 'pregunta' => 'Dame ideas para implementar esto en el aula'],
-        ['etiqueta' => 'Adaptación y diferenciación', 'pregunta' => '¿Cómo puedo adaptar esto a distintos niveles o necesidades de mis estudiantes?'],
-        ['etiqueta' => 'Estrategias de evaluación', 'pregunta' => '¿Qué estrategias de evaluación me recomiendas para este contenido?'],
-        ['etiqueta' => 'Fundamentos pedagógicos', 'pregunta' => 'Resume los fundamentos pedagógicos de este artículo'],
-    ];
-}
 
-require __DIR__ . '/templates/header.php';
+require __DIR__ . '/../templates/header.php';
 ?>
 
 <article>
@@ -668,4 +622,4 @@ formChat.addEventListener('submit', async (ev) => {
 });
 </script>
 
-<?php require __DIR__ . '/templates/footer.php'; ?>
+<?php require __DIR__ . '/../templates/footer.php'; ?>
