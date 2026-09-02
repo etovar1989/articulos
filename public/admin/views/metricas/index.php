@@ -1,98 +1,23 @@
 <?php
 declare(strict_types=1);
-require __DIR__ . '/../lib/auth.php';
-require __DIR__ . '/../lib/helpers.php';
-require __DIR__ . '/../lib/db.php';
-requiere_login();
-
-$pdo = db();
-
-// Precio aproximado de gpt-4.1-mini (revisar si OpenAI cambia tarifas):
-// USD 0.15 / 1M tokens de entrada, USD 0.60 / 1M tokens de salida.
-const PRECIO_ENTRADA_POR_M = 0.15;
-const PRECIO_SALIDA_POR_M = 0.60;
-
-$totales = $pdo->query('
-    SELECT count(*) AS n_preguntas,
-           coalesce(sum(tokens_in), 0) AS tokens_in,
-           coalesce(sum(tokens_out), 0) AS tokens_out
-    FROM chat_log
-')->fetch();
-$costoTotal = ($totales['tokens_in'] / 1000000 * PRECIO_ENTRADA_POR_M)
-            + ($totales['tokens_out'] / 1000000 * PRECIO_SALIDA_POR_M);
-
-// ─── Buscador semántico ─────────────────────────────────────────────
-$totalesBusqueda = $pdo->query('
-    SELECT count(*) AS n_busquedas,
-           count(*) FILTER (WHERE n_resultados = 0) AS n_sin_resultados,
-           count(*) FILTER (WHERE con_sintesis) AS n_con_sintesis
-    FROM busqueda_log
-')->fetch();
-
-$costoBusquedaTokens = $pdo->query("
-    SELECT coalesce(sum(tokens_in), 0) AS tokens_in, coalesce(sum(tokens_out), 0) AS tokens_out
-    FROM ai_usage WHERE kind = 'busqueda_sintesis'
-")->fetch();
-$costoBusquedaTotal = ($costoBusquedaTokens['tokens_in'] / 1000000 * PRECIO_ENTRADA_POR_M)
-                    + ($costoBusquedaTokens['tokens_out'] / 1000000 * PRECIO_SALIDA_POR_M);
-
-$busquedasFrecuentes = $pdo->query("
-    SELECT (array_agg(consulta ORDER BY created_at DESC))[1] AS consulta_ejemplo,
-           count(*) AS veces,
-           round(avg(n_resultados)) AS promedio_resultados,
-           count(*) FILTER (WHERE n_resultados = 0) AS veces_sin_resultados,
-           max(created_at) AS ultima_vez
-    FROM busqueda_log
-    GROUP BY lower(trim(consulta))
-    ORDER BY veces DESC, ultima_vez DESC
-    LIMIT 15
-")->fetchAll();
-
-$q = trim((string) ($_GET['q'] ?? ''));
-$pagina = max(1, (int) ($_GET['pagina'] ?? 1));
-$porPagina = 25;
-
-$where = '';
-$params = [];
-if ($q !== '') {
-    $where = 'WHERE a.title ILIKE :q';
-    $params['q'] = '%' . $q . '%';
-}
-
-$total = $pdo->prepare("
-    SELECT count(DISTINCT a.id)
-    FROM articles a JOIN chat_log cl ON cl.article_id = a.id
-    $where
-");
-$total->execute($params);
-$totalFilas = (int) $total->fetchColumn();
-$totalPaginas = (int) max(1, ceil($totalFilas / $porPagina));
-$offset = ($pagina - 1) * $porPagina;
-
-$stmt = $pdo->prepare("
-    SELECT a.id, a.title, c.name AS categoria_nombre,
-           count(cl.id) AS n_preguntas,
-           coalesce(sum(cl.tokens_in), 0) AS tokens_in,
-           coalesce(sum(cl.tokens_out), 0) AS tokens_out,
-           max(cl.created_at) AS ultima_pregunta
-    FROM articles a
-    JOIN chat_log cl ON cl.article_id = a.id
-    LEFT JOIN categories c ON c.id = a.category_id
-    $where
-    GROUP BY a.id, a.title, c.name
-    ORDER BY (coalesce(sum(cl.tokens_in), 0) + coalesce(sum(cl.tokens_out), 0)) DESC
-    LIMIT :limite OFFSET :offset
-");
-foreach ($params as $k => $v) {
-    $stmt->bindValue($k, $v);
-}
-$stmt->bindValue('limite', $porPagina, PDO::PARAM_INT);
-$stmt->bindValue('offset', $offset, PDO::PARAM_INT);
-$stmt->execute();
-$filas = $stmt->fetchAll();
-
-$titulo = 'Métricas';
-require __DIR__ . '/../templates/header.php';
+if (!defined('EDUTEKA_APP')) { http_response_code(404); exit; }
+/**
+ * Vista de metricas (chat por articulo + buscador). Recibe los datos ya
+ * resueltos por App\Controllers\Admin\MetricsController::index().
+ *
+ * @var string $titulo
+ * @var array $totales
+ * @var float $costoTotal
+ * @var array $totalesBusqueda
+ * @var float $costoBusquedaTotal
+ * @var array $busquedasFrecuentes
+ * @var string $q
+ * @var int $pagina
+ * @var array $filas
+ * @var int $totalFilas
+ * @var int $totalPaginas
+ */
+require __DIR__ . '/../../templates/header.php';
 ?>
 <h1 class="text-2xl font-bold mb-6">Métricas del chat por artículo</h1>
 
@@ -227,4 +152,4 @@ require __DIR__ . '/../templates/header.php';
 </table>
 </div>
 
-<?php require __DIR__ . '/../templates/footer.php'; ?>
+<?php require __DIR__ . '/../../templates/footer.php'; ?>

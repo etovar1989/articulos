@@ -1,259 +1,20 @@
 <?php
 declare(strict_types=1);
-require __DIR__ . '/../lib/auth.php';
-require __DIR__ . '/../lib/helpers.php';
-require __DIR__ . '/../lib/db.php';
-requiere_login();
-
-// admin/lib/helpers.php ya define e()/tw_btn()/tw_card()/tw_input()/paginacion(); no se puede
-// requerir también articulos/lib/helpers.php (redeclara esas mismas funciones). Las tres que sí
-// necesitan articulos/lib/busqueda.php y articulos/lib/chat_general.php (markdown_render,
-// ip_cliente, parse_pg_vector) se definen aquí antes de cargar esos archivos.
-require_once __DIR__ . '/../../articulos/vendor/autoload.php';
-
-function markdown_render(string $md): string
-{
-    static $parsedown = null;
-    if ($parsedown === null) {
-        $parsedown = new Parsedown();
-        $parsedown->setSafeMode(true);
-    }
-    $md = preg_replace('/^[ \t\x{00A0}]+$/mu', '', $md);
-    $md = preg_replace('/\n{3,}/', "\n\n", $md);
-    return $parsedown->text(trim($md));
-}
-
-function ip_cliente(): string
-{
-    return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-}
-
-function parse_pg_vector(string $literal): array
-{
-    $recortado = trim($literal, '[]');
-    if ($recortado === '') {
-        return [];
-    }
-    return array_map('floatval', explode(',', $recortado));
-}
-
-require __DIR__ . '/../../articulos/lib/busqueda.php';
-require __DIR__ . '/../../articulos/lib/chat_general.php';
-
-$pdo = db();
-$configIA = require __DIR__ . '/../../articulos/config/config.php';
-
-const PRECIO_ENTRADA_POR_M = 0.15;
-const PRECIO_SALIDA_POR_M = 0.60;
-const TOP_EXTRA_VISUALIZACION = 5; // candidatos de más solo para ver "qué quedó justo fuera del top-K"
-
-// Reproduce el mismo flujo de generar_respuesta_rag_general() pero exponiendo cada paso
-// intermedio (candidatos antes de podar, contexto exacto, respuesta cruda) para el inspector.
-// No usa esa función directamente: aquí no interesa solo el resultado final sino la trazabilidad
-// completa, y tampoco debe escribir en chat_general_log (eso es el registro de preguntas reales
-// de usuarios para perfilarlos, no de pruebas del admin).
-function ejecutar_pipeline_rag(PDO $pdo, array $config, string $mensaje, array $historial): array
-{
-    $pasos = [];
-
-    $t0 = microtime(true);
-    $condensada = condensar_pregunta($config, $mensaje, $historial);
-    $pasos['condensacion'] = [
-        'aplico' => $condensada !== $mensaje,
-        'original' => $mensaje,
-        'condensada' => $condensada,
-        'ms' => round((microtime(true) - $t0) * 1000),
-    ];
-
-    $hash = hash_consulta($condensada);
-    $chk = $pdo->prepare('SELECT 1 FROM query_embeddings WHERE hash = :h');
-    $chk->execute(['h' => $hash]);
-    $eraCache = (bool) $chk->fetchColumn();
-
-    $t0 = microtime(true);
-    $vector = embeber_consulta($pdo, $config, $condensada);
-    $pasos['embedding'] = [
-        'fuente' => $eraCache ? 'cache' : 'api',
-        'dimensiones' => $vector ? count($vector) : 0,
-        'ms' => round((microtime(true) - $t0) * 1000),
-    ];
-
-    if ($vector === null) {
-        $pasos['error'] = 'No se pudo generar el embedding de la consulta.';
-        return $pasos;
-    }
-
-    $t0 = microtime(true);
-    $candidatos = buscar_articulos_similares($pdo, $vector, TOP_K_CHAT_GENERAL + TOP_EXTRA_VISUALIZACION);
-    $msRecuperacion = round((microtime(true) - $t0) * 1000);
-
-    $dentroTopK = array_slice($candidatos, 0, TOP_K_CHAT_GENERAL);
-    $fueraTopK = array_slice($candidatos, TOP_K_CHAT_GENERAL);
-    $relevantes = array_values(array_filter($dentroTopK, fn($c) => $c['similitud'] >= UMBRAL_SIMILITUD_MINIMA));
-    $descartadosPorUmbral = array_values(array_filter($dentroTopK, fn($c) => $c['similitud'] < UMBRAL_SIMILITUD_MINIMA));
-
-    $pasos['recuperacion'] = [
-        'ms' => $msRecuperacion,
-        'top_k' => TOP_K_CHAT_GENERAL,
-        'umbral' => UMBRAL_SIMILITUD_MINIMA,
-        'dentro_top_k' => $dentroTopK,
-        'fuera_top_k' => $fueraTopK,
-        'relevantes' => $relevantes,
-        'descartados_por_umbral' => $descartadosPorUmbral,
-    ];
-
-    if (!$relevantes) {
-        $pasos['grounding'] = 'sin_resultados';
-        $pasos['respuesta_final'] = 'No encontré artículos de Eduteka relacionados con tu pregunta. '
-            . '¿Puedes reformularla o preguntar sobre otro tema educativo?';
-        return $pasos;
-    }
-
-    $bloques = [];
-    foreach ($relevantes as $i => $r) {
-        $extracto = mb_substr(strip_tags(markdown_render($r['body'])), 0, 1200);
-        $bloques[] = [
-            'n' => $i + 1,
-            'id' => $r['id'],
-            'titulo' => $r['title'],
-            'categoria' => $r['categoria_nombre'],
-            'extracto' => $extracto,
-        ];
-    }
-    $pasos['contexto'] = $bloques;
-
-    $contextoTexto = '';
-    foreach ($bloques as $b) {
-        $etiquetaCategoria = $b['categoria'] ? ' (' . $b['categoria'] . ')' : '';
-        $contextoTexto .= '[' . $b['n'] . '] "' . $b['titulo'] . '"' . $etiquetaCategoria . ":\n" . $b['extracto'] . "\n\n---\n\n";
-    }
-
-    $historialSaneado = [];
-    foreach (array_slice($historial, -6) as $t) {
-        $rol = ($t['role'] ?? '') === 'assistant' ? 'assistant' : 'user';
-        $contenido = trim((string) ($t['content'] ?? ''));
-        if ($contenido !== '') {
-            $historialSaneado[] = ['role' => $rol, 'content' => mb_substr($contenido, 0, 2000)];
-        }
-    }
-
-    // Mismo prompt exacto que articulos/lib/chat_general.php::generar_respuesta_rag_general().
-    $systemPrompt = "Eres el asistente de Eduteka, un portal educativo. Respondes preguntas de "
-        . "docentes y estudiantes basándote en los artículos de Eduteka que te doy como contexto.\n\n"
-        . "Reglas:\n"
-        . "- Básate siempre en los fragmentos numerados de abajo y cita [n] en cada afirmación que venga de ellos.\n"
-        . "- Si los fragmentos no bastan para responder del todo, puedes complementar con tu conocimiento "
-        . "general, pero avísalo explícitamente (\"Fuera de tus documentos de Eduteka...\").\n"
-        . "- Nunca inventes citas, cifras, nombres o datos que no estén en el contexto.\n"
-        . "- Si varios artículos tratan el tema, compáralos brevemente.\n"
-        . "- Responde en español, clara y concisa (máximo 150 palabras).\n\n"
-        . "--- ARTÍCULOS DE EDUTEKA ---\n" . $contextoTexto;
-
-    $mensajes = [['role' => 'system', 'content' => $systemPrompt]];
-    foreach ($historialSaneado as $t) {
-        $mensajes[] = $t;
-    }
-    $mensajes[] = ['role' => 'user', 'content' =>
-        $mensaje . "\n\n(Al final de tu respuesta agrega una última línea con SOLO una de estas "
-        . 'tres opciones, elige exactamente una y escribe nada más que eso en esa línea: '
-        . '"GROUNDING: rag" (si respondiste solo con los artículos), "GROUNDING: general" (si solo '
-        . 'usaste conocimiento general) o "GROUNDING: integrado" (si combinaste ambos).)'];
-
-    $payload = json_encode([
-        'model' => $config['chat_model'],
-        'messages' => $mensajes,
-        'temperature' => 0.3,
-        'max_tokens' => 500,
-    ]);
-
-    $t0 = microtime(true);
-    $ch = curl_init('https://api.openai.com/v1/chat/completions');
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_POST => true,
-        CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'Authorization: Bearer ' . $config['openai_api_key']],
-        CURLOPT_POSTFIELDS => $payload,
-        CURLOPT_TIMEOUT => 20,
-    ]);
-    $resp = curl_exec($ch);
-    $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    $msGeneracion = round((microtime(true) - $t0) * 1000);
-
-    if ($resp === false || $http >= 400) {
-        $pasos['error'] = 'El servicio de IA no respondió (HTTP ' . $http . ').';
-        return $pasos;
-    }
-
-    $datos = json_decode($resp, true);
-    $textoCompleto = trim((string) ($datos['choices'][0]['message']['content'] ?? ''));
-    $respuestaCruda = $textoCompleto;
-
-    $grounding = 'integrado';
-    if (preg_match('/GROUNDING:\s*(rag|general|integrado)/i', $textoCompleto, $m)) {
-        $grounding = mb_strtolower($m[1]);
-    }
-    $textoCompleto = trim((string) preg_replace('/\s*GROUNDING:.*/is', '', $textoCompleto));
-
-    $citados = [];
-    foreach ($relevantes as $i => $r) {
-        if (preg_match('/\[' . ($i + 1) . '\]/', $textoCompleto)) {
-            $citados[] = ['id' => (int) $r['id'], 'title' => $r['title'], 'n' => $i + 1];
-        }
-    }
-
-    $tokensIn = $datos['usage']['prompt_tokens'] ?? null;
-    $tokensOut = $datos['usage']['completion_tokens'] ?? null;
-
-    $pasos['generacion'] = [
-        'ms' => $msGeneracion,
-        'respuesta_cruda' => $respuestaCruda,
-        'tokens_in' => $tokensIn,
-        'tokens_out' => $tokensOut,
-        'costo' => $tokensIn !== null
-            ? ($tokensIn / 1000000 * PRECIO_ENTRADA_POR_M) + ($tokensOut / 1000000 * PRECIO_SALIDA_POR_M)
-            : null,
-    ];
-    $pasos['grounding'] = $grounding;
-    $pasos['respuesta_final'] = $textoCompleto;
-    $pasos['citados'] = $citados;
-
-    try {
-        $pdo->prepare("INSERT INTO ai_usage (origen, kind, tokens_in, tokens_out, ip) VALUES ('rag_inspector', 'rag_inspector', :tin, :tout, :ip)")
-            ->execute(['tin' => $tokensIn, 'tout' => $tokensOut, 'ip' => ip_cliente()]);
-    } catch (Throwable $e) {
-        error_log('rag inspector: error registrando ai_usage: ' . $e->getMessage());
-    }
-
-    return $pasos;
-}
-
-$resultado = null;
-$error = null;
-$preguntaEnviada = '';
-$historialTexto = '';
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    csrf_check();
-    $preguntaEnviada = trim((string) ($_POST['pregunta'] ?? ''));
-    $historialTexto = (string) ($_POST['historial'] ?? '');
-
-    $historial = [];
-    foreach (preg_split('/\r?\n/', $historialTexto) as $linea) {
-        if (preg_match('/^\s*(Usuario|Asistente)\s*:\s*(.+)$/i', $linea, $m)) {
-            $historial[] = [
-                'role' => mb_strtolower($m[1]) === 'asistente' ? 'assistant' : 'user',
-                'content' => trim($m[2]),
-            ];
-        }
-    }
-
-    if ($preguntaEnviada === '' || mb_strlen($preguntaEnviada) > 2000) {
-        $error = 'Escribe una pregunta de prueba (máximo 2000 caracteres).';
-    } else {
-        $resultado = ejecutar_pipeline_rag($pdo, $configIA, $preguntaEnviada, $historial);
-    }
-}
+if (!defined('EDUTEKA_APP')) { http_response_code(404); exit; }
+/**
+ * Vista del inspector RAG. Recibe los datos ya resueltos por
+ * App\Controllers\Admin\RagController::index() — el pipeline completo
+ * (condensacion, embedding, recuperacion, generacion) vive en
+ * App\Models\RagModel::ejecutarPipelineInspeccion(). e(), resaltar_citas() y
+ * markdown_render() ya estan disponibles globalmente via app/lib/helpers.php,
+ * sin necesidad de redeclararlas como antes.
+ *
+ * @var string $titulo
+ * @var array|null $resultado
+ * @var string|null $error
+ * @var string $preguntaEnviada
+ * @var string $historialTexto
+ */
 
 function badge_grounding(string $g): string
 {
@@ -266,14 +27,7 @@ function badge_grounding(string $g): string
     };
 }
 
-function resaltar_citas(string $texto): string
-{
-    $html = e($texto);
-    return preg_replace('/\[(\d+)\]/', '<span class="inline-flex items-center justify-center rounded bg-marca-azul/10 text-marca-azul text-xs font-bold px-1.5 py-0.5 mx-0.5">[$1]</span>', $html);
-}
-
-$titulo = 'Inspector del RAG';
-require __DIR__ . '/../templates/header.php';
+require __DIR__ . '/../../templates/header.php';
 ?>
 <h1 class="text-2xl font-bold mb-1">Inspector del RAG</h1>
 <p class="text-sm text-gray-500 mb-6">
@@ -453,4 +207,4 @@ require __DIR__ . '/../templates/header.php';
 <div class="border rounded px-4 py-3 <?= e(clases_alerta('danger')) ?>"><?= e($resultado['error']) ?></div>
 <?php endif; ?>
 
-<?php require __DIR__ . '/../templates/footer.php'; ?>
+<?php require __DIR__ . '/../../templates/footer.php'; ?>

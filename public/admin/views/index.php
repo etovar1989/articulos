@@ -1,28 +1,16 @@
 <?php
 declare(strict_types=1);
-require __DIR__ . '/lib/auth.php';
-require __DIR__ . '/lib/helpers.php';
-require __DIR__ . '/lib/db.php';
-requiere_login();
-
-$pdo = db();
-$totales = $pdo->query("
-    SELECT
-        count(*) AS total,
-        count(*) FILTER (WHERE estado = 'publicado') AS publicados,
-        count(*) FILTER (WHERE estado = 'borrador') AS borradores,
-        count(*) FILTER (WHERE estado = 'archivado') AS archivados,
-        count(*) FILTER (WHERE rag_status = 'ready') AS rag_listos,
-        count(*) FILTER (WHERE rag_status = 'pending') AS rag_pendientes,
-        count(*) FILTER (WHERE rag_status = 'error') AS rag_errores
-    FROM articles
-")->fetch();
-
-$nCategorias = (int) $pdo->query('SELECT count(*) FROM categories')->fetchColumn();
-$nEtiquetas = (int) $pdo->query('SELECT count(*) FROM tags')->fetchColumn();
-
-$titulo = 'Panel';
-require __DIR__ . '/templates/header.php';
+if (!defined('EDUTEKA_APP')) { http_response_code(404); exit; }
+/**
+ * Vista del dashboard. Recibe los datos ya resueltos por
+ * App\Controllers\Admin\DashboardController::index().
+ *
+ * @var string $titulo
+ * @var array $totales
+ * @var int $nCategorias
+ * @var int $nEtiquetas
+ */
+require __DIR__ . '/../templates/header.php';
 ?>
 <h1 class="text-2xl font-bold mb-6">Panel de administración</h1>
 
@@ -70,4 +58,4 @@ require __DIR__ . '/templates/header.php';
     <a href="/admin/etiquetas/index.php" class="<?= e(tw_btn('outline')) ?> py-4">Gestionar etiquetas</a>
 </div>
 
-<?php require __DIR__ . '/templates/footer.php'; ?>
+<?php require __DIR__ . '/../templates/footer.php'; ?>

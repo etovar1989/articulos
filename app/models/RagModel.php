@@ -199,4 +199,187 @@ final class RagModel
             error_log('registrarChatGeneral: ' . $e->getMessage());
         }
     }
+
+    // Reproduce el mismo flujo de generarRespuestaRagGeneral() pero exponiendo cada
+    // paso intermedio (candidatos antes de podar, contexto exacto, respuesta cruda)
+    // para el inspector del admin. No usa esa funcion directamente: aqui no interesa
+    // solo el resultado final sino la trazabilidad completa, y tampoco debe escribir
+    // en chat_general_log (eso es el registro de preguntas reales de usuarios, no de
+    // pruebas del admin). Puerto 1:1 de ejecutar_pipeline_rag() en admin/rag/index.php.
+    public static function ejecutarPipelineInspeccion(PDO $pdo, array $config, string $mensaje, array $historial, float $precioEntradaPorM, float $precioSalidaPorM): array
+    {
+        $topExtraVisualizacion = 5; // candidatos de mas solo para ver "que quedo justo fuera del top-K"
+        $pasos = [];
+
+        $t0 = microtime(true);
+        $condensada = self::condensarPregunta($config, $mensaje, $historial);
+        $pasos['condensacion'] = [
+            'aplico' => $condensada !== $mensaje,
+            'original' => $mensaje,
+            'condensada' => $condensada,
+            'ms' => round((microtime(true) - $t0) * 1000),
+        ];
+
+        $hash = SearchModel::hashConsulta($condensada);
+        $chk = $pdo->prepare('SELECT 1 FROM query_embeddings WHERE hash = :h');
+        $chk->execute(['h' => $hash]);
+        $eraCache = (bool) $chk->fetchColumn();
+
+        $t0 = microtime(true);
+        $vector = SearchModel::embeberConsulta($pdo, $config, $condensada);
+        $pasos['embedding'] = [
+            'fuente' => $eraCache ? 'cache' : 'api',
+            'dimensiones' => $vector ? count($vector) : 0,
+            'ms' => round((microtime(true) - $t0) * 1000),
+        ];
+
+        if ($vector === null) {
+            $pasos['error'] = 'No se pudo generar el embedding de la consulta.';
+            return $pasos;
+        }
+
+        $t0 = microtime(true);
+        $candidatos = SearchModel::buscarArticulosSimilares($pdo, $vector, self::TOP_K_CHAT_GENERAL + $topExtraVisualizacion);
+        $msRecuperacion = round((microtime(true) - $t0) * 1000);
+
+        $dentroTopK = array_slice($candidatos, 0, self::TOP_K_CHAT_GENERAL);
+        $fueraTopK = array_slice($candidatos, self::TOP_K_CHAT_GENERAL);
+        $relevantes = array_values(array_filter($dentroTopK, fn($c) => $c['similitud'] >= self::UMBRAL_SIMILITUD_MINIMA));
+        $descartadosPorUmbral = array_values(array_filter($dentroTopK, fn($c) => $c['similitud'] < self::UMBRAL_SIMILITUD_MINIMA));
+
+        $pasos['recuperacion'] = [
+            'ms' => $msRecuperacion,
+            'top_k' => self::TOP_K_CHAT_GENERAL,
+            'umbral' => self::UMBRAL_SIMILITUD_MINIMA,
+            'dentro_top_k' => $dentroTopK,
+            'fuera_top_k' => $fueraTopK,
+            'relevantes' => $relevantes,
+            'descartados_por_umbral' => $descartadosPorUmbral,
+        ];
+
+        if (!$relevantes) {
+            $pasos['grounding'] = 'sin_resultados';
+            $pasos['respuesta_final'] = 'No encontré artículos de Eduteka relacionados con tu pregunta. '
+                . '¿Puedes reformularla o preguntar sobre otro tema educativo?';
+            return $pasos;
+        }
+
+        $bloques = [];
+        foreach ($relevantes as $i => $r) {
+            $extracto = mb_substr(strip_tags(markdown_render($r['body'])), 0, 1200);
+            $bloques[] = [
+                'n' => $i + 1,
+                'id' => $r['id'],
+                'titulo' => $r['title'],
+                'categoria' => $r['categoria_nombre'],
+                'extracto' => $extracto,
+            ];
+        }
+        $pasos['contexto'] = $bloques;
+
+        $contextoTexto = '';
+        foreach ($bloques as $b) {
+            $etiquetaCategoria = $b['categoria'] ? ' (' . $b['categoria'] . ')' : '';
+            $contextoTexto .= '[' . $b['n'] . '] "' . $b['titulo'] . '"' . $etiquetaCategoria . ":\n" . $b['extracto'] . "\n\n---\n\n";
+        }
+
+        $historialSaneado = [];
+        foreach (array_slice($historial, -6) as $t) {
+            $rol = ($t['role'] ?? '') === 'assistant' ? 'assistant' : 'user';
+            $contenido = trim((string) ($t['content'] ?? ''));
+            if ($contenido !== '') {
+                $historialSaneado[] = ['role' => $rol, 'content' => mb_substr($contenido, 0, 2000)];
+            }
+        }
+
+        // Mismo prompt exacto que generarRespuestaRagGeneral().
+        $systemPrompt = "Eres el asistente de Eduteka, un portal educativo. Respondes preguntas de "
+            . "docentes y estudiantes basándote en los artículos de Eduteka que te doy como contexto.\n\n"
+            . "Reglas:\n"
+            . "- Básate siempre en los fragmentos numerados de abajo y cita [n] en cada afirmación que venga de ellos.\n"
+            . "- Si los fragmentos no bastan para responder del todo, puedes complementar con tu conocimiento "
+            . "general, pero avísalo explícitamente (\"Fuera de tus documentos de Eduteka...\").\n"
+            . "- Nunca inventes citas, cifras, nombres o datos que no estén en el contexto.\n"
+            . "- Si varios artículos tratan el tema, compáralos brevemente.\n"
+            . "- Responde en español, clara y concisa (máximo 150 palabras).\n\n"
+            . "--- ARTÍCULOS DE EDUTEKA ---\n" . $contextoTexto;
+
+        $mensajes = [['role' => 'system', 'content' => $systemPrompt]];
+        foreach ($historialSaneado as $t) {
+            $mensajes[] = $t;
+        }
+        $mensajes[] = ['role' => 'user', 'content' =>
+            $mensaje . "\n\n(Al final de tu respuesta agrega una última línea con SOLO una de estas "
+            . 'tres opciones, elige exactamente una y escribe nada más que eso en esa línea: '
+            . '"GROUNDING: rag" (si respondiste solo con los artículos), "GROUNDING: general" (si solo '
+            . 'usaste conocimiento general) o "GROUNDING: integrado" (si combinaste ambos).)'];
+
+        $payload = json_encode([
+            'model' => $config['chat_model'],
+            'messages' => $mensajes,
+            'temperature' => 0.3,
+            'max_tokens' => 500,
+        ]);
+
+        $t0 = microtime(true);
+        $ch = curl_init('https://api.openai.com/v1/chat/completions');
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'Authorization: Bearer ' . $config['openai_api_key']],
+            CURLOPT_POSTFIELDS => $payload,
+            CURLOPT_TIMEOUT => 20,
+        ]);
+        $resp = curl_exec($ch);
+        $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        $msGeneracion = round((microtime(true) - $t0) * 1000);
+
+        if ($resp === false || $http >= 400) {
+            $pasos['error'] = 'El servicio de IA no respondió (HTTP ' . $http . ').';
+            return $pasos;
+        }
+
+        $datos = json_decode($resp, true);
+        $textoCompleto = trim((string) ($datos['choices'][0]['message']['content'] ?? ''));
+        $respuestaCruda = $textoCompleto;
+
+        $grounding = 'integrado';
+        if (preg_match('/GROUNDING:\s*(rag|general|integrado)/i', $textoCompleto, $m)) {
+            $grounding = mb_strtolower($m[1]);
+        }
+        $textoCompleto = trim((string) preg_replace('/\s*GROUNDING:.*/is', '', $textoCompleto));
+
+        $citados = [];
+        foreach ($relevantes as $i => $r) {
+            if (preg_match('/\[' . ($i + 1) . '\]/', $textoCompleto)) {
+                $citados[] = ['id' => (int) $r['id'], 'title' => $r['title'], 'n' => $i + 1];
+            }
+        }
+
+        $tokensIn = $datos['usage']['prompt_tokens'] ?? null;
+        $tokensOut = $datos['usage']['completion_tokens'] ?? null;
+
+        $pasos['generacion'] = [
+            'ms' => $msGeneracion,
+            'respuesta_cruda' => $respuestaCruda,
+            'tokens_in' => $tokensIn,
+            'tokens_out' => $tokensOut,
+            'costo' => $tokensIn !== null
+                ? ($tokensIn / 1000000 * $precioEntradaPorM) + ($tokensOut / 1000000 * $precioSalidaPorM)
+                : null,
+        ];
+        $pasos['grounding'] = $grounding;
+        $pasos['respuesta_final'] = $textoCompleto;
+        $pasos['citados'] = $citados;
+
+        try {
+            $pdo->prepare("INSERT INTO ai_usage (origen, kind, tokens_in, tokens_out, ip) VALUES ('rag_inspector', 'rag_inspector', :tin, :tout, :ip)")
+                ->execute(['tin' => $tokensIn, 'tout' => $tokensOut, 'ip' => ip_cliente()]);
+        } catch (Throwable $e) {
+            error_log('rag inspector: error registrando ai_usage: ' . $e->getMessage());
+        }
+
+        return $pasos;
+    }
 }

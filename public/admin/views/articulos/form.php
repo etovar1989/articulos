@@ -1,42 +1,17 @@
 <?php
 declare(strict_types=1);
-require __DIR__ . '/../lib/auth.php';
-require __DIR__ . '/../lib/helpers.php';
-require __DIR__ . '/../lib/db.php';
-requiere_login();
-
-$pdo = db();
-$id = isset($_GET['id']) ? (int) $_GET['id'] : null;
-$articulo = [
-    'id' => null, 'title' => '', 'slug' => '', 'summary' => '', 'body' => '',
-    'author' => '', 'category_id' => '', 'article_date' => '', 'estado' => 'borrador',
-];
-$etiquetasTexto = '';
-
-if ($id) {
-    $stmt = $pdo->prepare('SELECT * FROM articles WHERE id = :id');
-    $stmt->execute(['id' => $id]);
-    $fila = $stmt->fetch();
-    if (!$fila) {
-        flash('danger', 'Artículo no encontrado.');
-        redirect('/admin/articulos/index.php');
-    }
-    $articulo = $fila;
-
-    $tagsStmt = $pdo->prepare('
-        SELECT t.name FROM tags t
-        JOIN article_tags at2 ON at2.tag_id = t.id
-        WHERE at2.article_id = :id
-        ORDER BY t.name
-    ');
-    $tagsStmt->execute(['id' => $id]);
-    $etiquetasTexto = implode(', ', array_column($tagsStmt->fetchAll(), 'name'));
-}
-
-$categorias = $pdo->query('SELECT id, name FROM categories ORDER BY name')->fetchAll();
-
-$titulo = $id ? 'Editar artículo' : 'Nuevo artículo';
-require __DIR__ . '/../templates/header.php';
+if (!defined('EDUTEKA_APP')) { http_response_code(404); exit; }
+/**
+ * Vista del formulario de articulo (crear/editar). Recibe los datos ya
+ * resueltos por App\Controllers\Admin\ArticleController::form().
+ *
+ * @var string $titulo
+ * @var int|null $id
+ * @var array $articulo
+ * @var string $etiquetasTexto
+ * @var array $categorias
+ */
+require __DIR__ . '/../../templates/header.php';
 ?>
 <h1 class="text-2xl font-bold mb-6"><?= e($titulo) ?></h1>
 
@@ -116,4 +91,4 @@ require __DIR__ . '/../templates/header.php';
 </form>
 <?php endif; ?>
 
-<?php require __DIR__ . '/../templates/footer.php'; ?>
+<?php require __DIR__ . '/../../templates/footer.php'; ?>

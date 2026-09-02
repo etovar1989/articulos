@@ -1,62 +1,20 @@
 <?php
 declare(strict_types=1);
-require __DIR__ . '/../lib/auth.php';
-require __DIR__ . '/../lib/helpers.php';
-require __DIR__ . '/../lib/db.php';
-requiere_login();
-
-$pdo = db();
-
-$articuloId = trim((string) ($_GET['articulo_id'] ?? ''));
-$q = trim((string) ($_GET['q'] ?? ''));
-$pagina = max(1, (int) ($_GET['pagina'] ?? 1));
-$porPagina = 30;
-
-$condiciones = [];
-$params = [];
-if ($articuloId !== '') {
-    $condiciones[] = 'cl.article_id = :aid';
-    $params['aid'] = (int) $articuloId;
-}
-if ($q !== '') {
-    $condiciones[] = '(cl.pregunta ILIKE :q OR cl.respuesta ILIKE :q)';
-    $params['q'] = '%' . $q . '%';
-}
-$where = $condiciones ? ('WHERE ' . implode(' AND ', $condiciones)) : '';
-
-$articuloActual = null;
-if ($articuloId !== '') {
-    $art = $pdo->prepare('SELECT id, title FROM articles WHERE id = :id');
-    $art->execute(['id' => (int) $articuloId]);
-    $articuloActual = $art->fetch();
-}
-
-$total = $pdo->prepare("SELECT count(*) FROM chat_log cl $where");
-$total->execute($params);
-$totalFilas = (int) $total->fetchColumn();
-$totalPaginas = (int) max(1, ceil($totalFilas / $porPagina));
-$offset = ($pagina - 1) * $porPagina;
-
-$sql = "
-    SELECT cl.id, cl.pregunta, cl.respuesta, cl.tokens_in, cl.tokens_out, cl.created_at,
-           a.id AS articulo_id, a.title AS articulo_titulo
-    FROM chat_log cl
-    JOIN articles a ON a.id = cl.article_id
-    $where
-    ORDER BY cl.created_at DESC
-    LIMIT :limite OFFSET :offset
-";
-$stmt = $pdo->prepare($sql);
-foreach ($params as $k => $v) {
-    $stmt->bindValue($k, $v);
-}
-$stmt->bindValue('limite', $porPagina, PDO::PARAM_INT);
-$stmt->bindValue('offset', $offset, PDO::PARAM_INT);
-$stmt->execute();
-$filas = $stmt->fetchAll();
-
-$titulo = 'Preguntas del chat';
-require __DIR__ . '/../templates/header.php';
+if (!defined('EDUTEKA_APP')) { http_response_code(404); exit; }
+/**
+ * Vista del log de preguntas del chat. Recibe los datos ya resueltos por
+ * App\Controllers\Admin\MetricsController::preguntas().
+ *
+ * @var string $titulo
+ * @var string $articuloId
+ * @var string $q
+ * @var int $pagina
+ * @var array|null $articuloActual
+ * @var array $filas
+ * @var int $totalFilas
+ * @var int $totalPaginas
+ */
+require __DIR__ . '/../../templates/header.php';
 ?>
 <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
     <h1 class="text-2xl font-bold">
@@ -103,4 +61,4 @@ require __DIR__ . '/../templates/header.php';
 <?= paginacion($pagina, $totalPaginas, '/admin/metricas/preguntas.php?articulo_id=' . urlencode($articuloId) . '&q=' . urlencode($q)) ?>
 </div>
 
-<?php require __DIR__ . '/../templates/footer.php'; ?>
+<?php require __DIR__ . '/../../templates/footer.php'; ?>

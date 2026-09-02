@@ -1,48 +1,18 @@
 <?php
 declare(strict_types=1);
-require __DIR__ . '/../lib/auth.php';
-require __DIR__ . '/../lib/helpers.php';
-require __DIR__ . '/../lib/db.php';
-requiere_login();
-
-$pdo = db();
-
-$q = trim((string) ($_GET['q'] ?? ''));
-$pagina = max(1, (int) ($_GET['pagina'] ?? 1));
-$porPagina = 40;
-
-$where = '';
-$params = [];
-if ($q !== '') {
-    $where = 'WHERE t.name ILIKE :q';
-    $params['q'] = '%' . $q . '%';
-}
-
-$total = $pdo->prepare("SELECT count(*) FROM tags t $where");
-$total->execute($params);
-$totalFilas = (int) $total->fetchColumn();
-$totalPaginas = (int) max(1, ceil($totalFilas / $porPagina));
-$offset = (max(1, $pagina) - 1) * $porPagina;
-
-$stmt = $pdo->prepare("
-    SELECT t.id, t.name, count(at2.article_id) AS n_articulos
-    FROM tags t
-    LEFT JOIN article_tags at2 ON at2.tag_id = t.id
-    $where
-    GROUP BY t.id
-    ORDER BY n_articulos DESC, t.name
-    LIMIT :limite OFFSET :offset
-");
-foreach ($params as $k => $v) {
-    $stmt->bindValue($k, $v);
-}
-$stmt->bindValue('limite', $porPagina, PDO::PARAM_INT);
-$stmt->bindValue('offset', $offset, PDO::PARAM_INT);
-$stmt->execute();
-$etiquetas = $stmt->fetchAll();
-
-$titulo = 'Etiquetas';
-require __DIR__ . '/../templates/header.php';
+if (!defined('EDUTEKA_APP')) { http_response_code(404); exit; }
+/**
+ * Vista del listado de etiquetas. Recibe los datos ya resueltos por
+ * App\Controllers\Admin\TagController::index().
+ *
+ * @var string $titulo
+ * @var string $q
+ * @var int $pagina
+ * @var array $etiquetas
+ * @var int $totalFilas
+ * @var int $totalPaginas
+ */
+require __DIR__ . '/../../templates/header.php';
 ?>
 <h1 class="text-2xl font-bold mb-6">Etiquetas <span class="text-gray-400 text-base font-normal">(<?= $totalFilas ?>)</span></h1>
 
@@ -93,4 +63,4 @@ require __DIR__ . '/../templates/header.php';
 <?= paginacion($pagina, $totalPaginas, '/admin/etiquetas/index.php?q=' . urlencode($q)) ?>
 </div>
 
-<?php require __DIR__ . '/../templates/footer.php'; ?>
+<?php require __DIR__ . '/../../templates/footer.php'; ?>

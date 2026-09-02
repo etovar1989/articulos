@@ -1,54 +1,20 @@
 <?php
 declare(strict_types=1);
-require __DIR__ . '/../lib/auth.php';
-require __DIR__ . '/../lib/helpers.php';
-require __DIR__ . '/../lib/db.php';
-requiere_login();
-
-$pdo = db();
-
-$q = trim((string) ($_GET['q'] ?? ''));
-$soloSinResultados = isset($_GET['sin_resultados']);
-$pagina = max(1, (int) ($_GET['pagina'] ?? 1));
-$porPagina = 30;
-
-$condiciones = [];
-$params = [];
-if ($q !== '') {
-    $condiciones[] = 'consulta ILIKE :q';
-    $params['q'] = '%' . $q . '%';
-}
-if ($soloSinResultados) {
-    $condiciones[] = 'n_resultados = 0';
-}
-$where = $condiciones ? ('WHERE ' . implode(' AND ', $condiciones)) : '';
-
-$total = $pdo->prepare("SELECT count(*) FROM busqueda_log $where");
-$total->execute($params);
-$totalFilas = (int) $total->fetchColumn();
-$totalPaginas = (int) max(1, ceil($totalFilas / $porPagina));
-$offset = ($pagina - 1) * $porPagina;
-
-$sql = "
-    SELECT id, consulta, n_resultados, con_sintesis, created_at
-    FROM busqueda_log
-    $where
-    ORDER BY created_at DESC
-    LIMIT :limite OFFSET :offset
-";
-$stmt = $pdo->prepare($sql);
-foreach ($params as $k => $v) {
-    $stmt->bindValue($k, $v);
-}
-$stmt->bindValue('limite', $porPagina, PDO::PARAM_INT);
-$stmt->bindValue('offset', $offset, PDO::PARAM_INT);
-$stmt->execute();
-$filas = $stmt->fetchAll();
-
-$baseUrl = '/admin/metricas/busquedas.php?q=' . urlencode($q) . ($soloSinResultados ? '&sin_resultados=1' : '');
-
-$titulo = 'Búsquedas del buscador semántico';
-require __DIR__ . '/../templates/header.php';
+if (!defined('EDUTEKA_APP')) { http_response_code(404); exit; }
+/**
+ * Vista del log de busquedas. Recibe los datos ya resueltos por
+ * App\Controllers\Admin\MetricsController::busquedas().
+ *
+ * @var string $titulo
+ * @var string $q
+ * @var bool $soloSinResultados
+ * @var int $pagina
+ * @var array $filas
+ * @var int $totalFilas
+ * @var int $totalPaginas
+ * @var string $baseUrl
+ */
+require __DIR__ . '/../../templates/header.php';
 ?>
 <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
     <h1 class="text-2xl font-bold">
@@ -108,4 +74,4 @@ require __DIR__ . '/../templates/header.php';
 <?= paginacion($pagina, $totalPaginas, $baseUrl) ?>
 </div>
 
-<?php require __DIR__ . '/../templates/footer.php'; ?>
+<?php require __DIR__ . '/../../templates/footer.php'; ?>

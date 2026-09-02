@@ -1,28 +1,14 @@
 <?php
 declare(strict_types=1);
-require __DIR__ . '/lib/auth.php';
-require __DIR__ . '/lib/helpers.php';
-
-$config = require __DIR__ . '/config/config.php';
-$error = null;
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    csrf_check();
-    $clave = (string) ($_POST['password'] ?? '');
-    if (password_verify($clave, $config['admin_password_hash'])) {
-        session_regenerate_id(true);
-        $_SESSION['admin_autenticado'] = true;
-        redirect('/admin/index.php');
-    }
-    $error = 'Contraseña incorrecta.';
-}
-
-if (usuario_autenticado()) {
-    redirect('/admin/index.php');
-}
-
-$titulo = 'Iniciar sesión';
-require __DIR__ . '/templates/header.php';
+if (!defined('EDUTEKA_APP')) { http_response_code(404); exit; }
+/**
+ * Vista de login. Recibe $titulo y $error ya resueltos por
+ * App\Controllers\Admin\AuthController::login().
+ *
+ * @var string $titulo
+ * @var string|null $error
+ */
+require __DIR__ . '/../templates/header.php';
 ?>
 <div class="flex justify-center">
     <div class="w-full max-w-sm">
@@ -42,4 +28,4 @@ require __DIR__ . '/templates/header.php';
         </div>
     </div>
 </div>
-<?php require __DIR__ . '/templates/footer.php'; ?>
+<?php require __DIR__ . '/../templates/footer.php'; ?>

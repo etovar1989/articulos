@@ -1,21 +1,14 @@
 <?php
 declare(strict_types=1);
-require __DIR__ . '/../lib/auth.php';
-require __DIR__ . '/../lib/helpers.php';
-require __DIR__ . '/../lib/db.php';
-requiere_login();
-
-$pdo = db();
-$categorias = $pdo->query('
-    SELECT c.id, c.name, c.description, count(a.id) AS n_articulos
-    FROM categories c
-    LEFT JOIN articles a ON a.category_id = c.id
-    GROUP BY c.id
-    ORDER BY c.name
-')->fetchAll();
-
-$titulo = 'Categorías';
-require __DIR__ . '/../templates/header.php';
+if (!defined('EDUTEKA_APP')) { http_response_code(404); exit; }
+/**
+ * Vista del listado de categorias. Recibe los datos ya resueltos por
+ * App\Controllers\Admin\CategoryController::index().
+ *
+ * @var string $titulo
+ * @var array $categorias
+ */
+require __DIR__ . '/../../templates/header.php';
 ?>
 <h1 class="text-2xl font-bold mb-6">Categorías <span class="text-gray-400 text-base font-normal">(<?= count($categorias) ?>)</span></h1>
 
@@ -50,4 +43,4 @@ require __DIR__ . '/../templates/header.php';
 
 <p class="text-gray-400 text-xs mt-4">Para eliminar una categoría, primero reasigna sus artículos a otra (edítalos desde el listado de artículos); una categoría con artículos asignados no se puede borrar.</p>
 
-<?php require __DIR__ . '/../templates/footer.php'; ?>
+<?php require __DIR__ . '/../../templates/footer.php'; ?>

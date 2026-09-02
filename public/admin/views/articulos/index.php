@@ -1,76 +1,23 @@
 <?php
 declare(strict_types=1);
-require __DIR__ . '/../lib/auth.php';
-require __DIR__ . '/../lib/helpers.php';
-require __DIR__ . '/../lib/db.php';
-requiere_login();
-
-$pdo = db();
-
-$q = trim((string) ($_GET['q'] ?? ''));
-$categoriaId = $_GET['categoria_id'] ?? '';
-$etiquetaId = $_GET['etiqueta_id'] ?? '';
-$estado = $_GET['estado'] ?? '';
-$pagina = max(1, (int) ($_GET['pagina'] ?? 1));
-$porPagina = 20;
-
-$condiciones = [];
-$params = [];
-
-if ($q !== '') {
-    $condiciones[] = 'a.title ILIKE :q';
-    $params['q'] = '%' . $q . '%';
-}
-if ($categoriaId !== '') {
-    $condiciones[] = 'a.category_id = :categoria_id';
-    $params['categoria_id'] = (int) $categoriaId;
-}
-if ($etiquetaId !== '') {
-    $condiciones[] = 'a.id IN (SELECT article_id FROM article_tags WHERE tag_id = :etiqueta_id)';
-    $params['etiqueta_id'] = (int) $etiquetaId;
-}
-if ($estado !== '') {
-    $condiciones[] = 'a.estado = :estado';
-    $params['estado'] = $estado;
-}
-
-$where = $condiciones ? ('WHERE ' . implode(' AND ', $condiciones)) : '';
-
-$total = $pdo->prepare("SELECT count(*) FROM articles a $where");
-$total->execute($params);
-$totalFilas = (int) $total->fetchColumn();
-$totalPaginas = (int) max(1, ceil($totalFilas / $porPagina));
-
-$etiquetaNombre = null;
-if ($etiquetaId !== '') {
-    $et = $pdo->prepare('SELECT name FROM tags WHERE id = :id');
-    $et->execute(['id' => (int) $etiquetaId]);
-    $etiquetaNombre = $et->fetchColumn() ?: null;
-}
-
-$offset = ($pagina - 1) * $porPagina;
-$sql = "
-    SELECT a.id, a.slug, a.title, a.estado, a.rag_status, a.article_date,
-           c.name AS categoria_nombre
-    FROM articles a
-    LEFT JOIN categories c ON c.id = a.category_id
-    $where
-    ORDER BY a.id DESC
-    LIMIT :limite OFFSET :offset
-";
-$stmt = $pdo->prepare($sql);
-foreach ($params as $k => $v) {
-    $stmt->bindValue($k, $v);
-}
-$stmt->bindValue('limite', $porPagina, PDO::PARAM_INT);
-$stmt->bindValue('offset', $offset, PDO::PARAM_INT);
-$stmt->execute();
-$articulos = $stmt->fetchAll();
-
-$categorias = $pdo->query('SELECT id, name FROM categories ORDER BY name')->fetchAll();
-
-$titulo = 'Artículos';
-require __DIR__ . '/../templates/header.php';
+if (!defined('EDUTEKA_APP')) { http_response_code(404); exit; }
+/**
+ * Vista del listado de articulos (admin). Recibe los datos ya resueltos por
+ * App\Controllers\Admin\ArticleController::index().
+ *
+ * @var string $titulo
+ * @var string $q
+ * @var string $categoriaId
+ * @var string $etiquetaId
+ * @var string $estado
+ * @var int $pagina
+ * @var array $articulos
+ * @var int $totalFilas
+ * @var int $totalPaginas
+ * @var string|null $etiquetaNombre
+ * @var array $categorias
+ */
+require __DIR__ . '/../../templates/header.php';
 ?>
 <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
     <h1 class="text-2xl font-bold">Artículos <span class="text-gray-400 text-base font-normal">(<?= $totalFilas ?>)</span></h1>
@@ -147,4 +94,4 @@ require __DIR__ . '/../templates/header.php';
 <?= paginacion($pagina, $totalPaginas, '/admin/articulos/index.php?q=' . urlencode($q) . '&categoria_id=' . urlencode((string) $categoriaId) . '&etiqueta_id=' . urlencode((string) $etiquetaId) . '&estado=' . urlencode($estado)) ?>
 </div>
 
-<?php require __DIR__ . '/../templates/footer.php'; ?>
+<?php require __DIR__ . '/../../templates/footer.php'; ?>
