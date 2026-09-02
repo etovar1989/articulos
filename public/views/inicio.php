@@ -58,63 +58,64 @@ function resumen_home(?string $resumen, string $extracto, int $largo = 110): str
 </head>
 <body class="font-sans bg-white text-gray-900">
 
-<!-- NAV -->
-<header class="sticky top-0 z-40 bg-white border-b border-gray-100">
-    <div class="max-w-6xl mx-auto px-4 h-[76px] flex items-center justify-between gap-6">
+<!-- NAV (glass flotante) -->
+<header class="fixed top-0 w-full z-40" style="background-color: rgba(20,20,30,.65); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,.15);">
+    <div class="max-w-6xl mx-auto px-4 h-20 flex items-center justify-between gap-6">
         <a href="/" class="flex items-center shrink-0">
-            <img src="/img/logo-eduteka.png" alt="Eduteka" class="h-8 w-auto">
+            <img src="/img/logo-eduteka.png" alt="Eduteka" class="h-8 w-auto brightness-0 invert">
         </a>
         <nav class="hidden md:flex items-center gap-2 text-sm font-semibold">
-            <a href="#contenido" class="px-3 py-1.5 rounded-full hover:text-marca-azul hover:bg-gray-50">Contenido</a>
-            <a href="#herramientas" class="px-3 py-1.5 rounded-full hover:text-marca-azul hover:bg-gray-50">Herramientas</a>
-            <a href="#comunidad" class="px-3 py-1.5 rounded-full hover:text-marca-azul hover:bg-gray-50">Comunidad</a>
+            <a href="#contenido" class="px-4 py-2 rounded-full text-white bg-black/30 hover:bg-black/40">Contenido</a>
+            <a href="#herramientas" class="px-4 py-2 rounded-full text-white/90 hover:text-white hover:bg-black/20">Herramientas</a>
+            <a href="#comunidad" class="px-4 py-2 rounded-full text-white/90 hover:text-white hover:bg-black/20">Comunidad</a>
         </nav>
         <div class="flex items-center gap-3">
-            <form action="/articulos/index.php" method="get" class="hidden md:flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-full px-4 py-2 w-60">
-                <i class="fa-solid fa-magnifying-glass text-gray-400 text-sm"></i>
-                <input type="text" name="q" placeholder="Buscar artículos, temas..." class="bg-transparent outline-none text-sm w-full">
+            <form action="/articulos/index.php" method="get" class="hidden md:flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-2 w-60">
+                <i class="fa-solid fa-magnifying-glass text-white/60 text-sm"></i>
+                <input type="text" name="q" placeholder="Buscar artículos, temas..." class="bg-transparent outline-none text-sm w-full text-white placeholder-white/50">
             </form>
         </div>
     </div>
 </header>
 
 <!-- HERO -->
-<section class="relative overflow-hidden" style="background: linear-gradient(135deg, #14143A 0%, #1E1E5C 45%, #5454E9 100%);">
-    <div class="absolute inset-0 opacity-50" style="background-image: radial-gradient(circle at 15% 20%, rgba(255,255,255,.12) 0, transparent 40%), radial-gradient(circle at 85% 75%, rgba(255,255,255,.10) 0, transparent 45%);"></div>
-    <div class="max-w-6xl mx-auto px-4 relative py-24">
-        <div class="flex items-center gap-4 mb-9 flex-wrap">
-            <div class="rounded-full px-4 py-2" style="background-color: rgba(15,15,26,.65); backdrop-filter: blur(12px); border:1px solid rgba(255,255,255,.15);">
-                <span class="text-white text-sm font-semibold">25 años acompañando la educación con TIC</span>
-            </div>
-            <div class="flex gap-1.5">
-                <div class="w-7 h-2 bg-marca-naranja"></div>
-                <div class="w-7 h-2 bg-marca-verde"></div>
-                <div class="w-7 h-2 bg-marca-amarillo"></div>
+<section class="relative overflow-hidden min-h-[92vh] flex flex-col justify-center pt-20">
+    <div class="absolute inset-0 z-0">
+        <img src="/img/torre-icesi.jpg" alt="" class="absolute inset-0 w-full h-full object-cover">
+        <div class="absolute inset-0" style="background: linear-gradient(0deg, #0B0B19 0%, rgba(11,11,25,.88) 45%, rgba(11,11,25,.55) 100%);"></div>
+    </div>
+    <div class="max-w-6xl mx-auto px-4 relative z-10 py-16">
+        <div class="flex items-center gap-4 mb-6 flex-wrap">
+            <h1 class="text-6xl md:text-8xl font-extrabold tracking-tight text-white uppercase leading-none">Eduteka</h1>
+            <div class="hidden md:flex h-3 gap-1.5 w-40">
+                <div class="flex-1 bg-marca-naranja"></div>
+                <div class="flex-1 bg-marca-verde"></div>
+                <div class="flex-1 bg-marca-amarillo"></div>
             </div>
         </div>
 
-        <h1 class="text-5xl md:text-7xl leading-[1.02] text-white max-w-3xl font-extrabold tracking-tight">
+        <h2 class="text-3xl md:text-4xl leading-tight text-white max-w-3xl font-extrabold tracking-tight mb-6">
             <strong>Compartir</strong> recursos + <strong>Conectar</strong> docentes = <span class="font-normal">Transformar aulas</span>
-        </h1>
+        </h2>
 
-        <p class="max-w-xl text-marca-grisClaro text-lg mt-6">
+        <p class="max-w-2xl text-white/80 text-lg mb-8">
             Más de <?= number_format($totalArticulos, 0, ',', '.') ?> artículos y recursos gratuitos, proyectos y
             herramientas con IA para docentes, directivos y estudiantes de Hispanoamérica.
         </p>
 
-        <form action="/articulos/index.php" method="get" class="mt-10 max-w-xl">
-            <div class="rounded-2xl p-2 flex items-center gap-2" style="background-color: rgba(15,15,26,.65); backdrop-filter: blur(12px); border:1px solid rgba(255,255,255,.15);">
-                <i class="fa-solid fa-wand-magic-sparkles text-white ml-3"></i>
-                <input type="text" name="q" placeholder="¿Qué dice Eduteka sobre pensamiento computacional?" class="bg-transparent outline-none text-white placeholder-white/60 text-sm flex-1">
-                <button type="submit" class="<?= e(tw_btn('primario')) ?>">Buscar con IA</button>
+        <form action="/articulos/index.php" method="get" class="max-w-2xl mb-8">
+            <div class="rounded-xl p-2 flex items-center gap-2" style="background-color: rgba(252,248,255,.1); backdrop-filter: blur(12px); border:1px solid rgba(255,255,255,.2);">
+                <i class="fa-solid fa-wand-magic-sparkles text-white/60 ml-3"></i>
+                <input type="text" name="q" placeholder="¿Qué dice Eduteka sobre pensamiento computacional?" class="bg-transparent outline-none text-white placeholder-white/60 text-sm flex-1 py-3">
+                <button type="submit" class="bg-marca-azul text-white font-semibold rounded-lg px-6 py-2.5 hover:bg-marca-azulHover transition whitespace-nowrap">Buscar con IA</button>
             </div>
             <p class="text-white/50 text-xs mt-2 pl-2">Búsqueda semántica: entiende el significado de lo que preguntas, no solo palabras exactas.</p>
         </form>
 
-        <div class="flex gap-3 mt-9 flex-wrap">
-            <a href="/articulos/index.php" class="inline-flex items-center rounded-lg px-7 py-4 font-semibold bg-marca-azul text-white hover:bg-marca-azulHover">Explorar Artículos</a>
-            <a href="#herramientas" class="inline-flex items-center rounded-lg px-7 py-4 font-semibold bg-marca-amarillo" style="color:#2B2B7A;">Conocer EdutekaLab</a>
-            <a href="#aliados" class="inline-flex items-center rounded-lg px-7 py-4 font-semibold border border-white/60 text-white">Vincularme como Aliado</a>
+        <div class="flex gap-4 flex-wrap">
+            <a href="/articulos/index.php" class="inline-flex items-center rounded-lg px-8 py-3 font-semibold bg-marca-azul text-white hover:bg-marca-azulHover shadow-md transition">Explorar Contenidos</a>
+            <a href="#herramientas" class="inline-flex items-center rounded-lg px-8 py-3 font-semibold bg-marca-amarillo hover:brightness-95 shadow-md transition" style="color:#2B2B7A;">Conocer EdutekaLab</a>
+            <a href="#aliados" class="inline-flex items-center rounded-lg px-8 py-3 font-semibold border border-marca-naranja bg-marca-naranja text-white hover:brightness-110 shadow-md transition">Vincularme como Aliado</a>
         </div>
     </div>
 </section>
@@ -179,56 +180,59 @@ function resumen_home(?string $resumen, string $extracto, int $largo = 110): str
     </div>
 </section>
 
-<!-- Divisor de acento: barra segmentada con la paleta complementaria (patron AccentDivider) -->
-<div class="flex h-2.5">
-    <div class="flex-1" style="background:#E9683B;"></div>
-    <div class="flex-1" style="background:#E4EB60;"></div>
-    <div class="flex-1" style="background:#4CB979;"></div>
-    <div class="flex-1" style="background:#865CF0;"></div>
-    <div class="flex-1" style="background:#5454E9;"></div>
-</div>
-
 <!-- HERRAMIENTAS -->
-<section id="herramientas" class="relative py-28" style="background:#14143A; clip-path: polygon(0 32px, 100% 0, 100% 100%, 0 100%);">
-    <div class="max-w-6xl mx-auto px-4 pt-6">
-        <span class="text-xs font-bold tracking-widest uppercase" style="color:#9494F5;">Herramientas</span>
-        <h2 class="text-3xl font-extrabold mt-2 max-w-xl text-white">EdutekaLab: <strong>herramientas con IA</strong> para tu práctica docente</h2>
-        <p class="max-w-xl mt-3 text-sm" style="color:#B7B7E8;">Seis asistentes gratuitos que automatizan tareas del día a día, para que dediques más tiempo a enseñar.</p>
+<section id="herramientas" class="relative py-24 bg-gray-50 border-y border-gray-100">
+    <div class="max-w-6xl mx-auto px-4">
+        <span class="text-marca-azul text-xs font-bold tracking-widest uppercase">Herramientas</span>
+        <h2 class="text-3xl font-extrabold mt-2 max-w-xl">EdutekaLab: <strong>herramientas con IA</strong> para tu práctica docente</h2>
+        <p class="max-w-xl mt-3 text-sm text-gray-500">Seis asistentes gratuitos que automatizan tareas del día a día, para que dediques más tiempo a enseñar.</p>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
-            <div class="<?= e(tw_card()) ?> p-7">
-                <div class="w-12 h-12 flex items-center justify-center bg-marca-morado text-white mb-4"><i class="fa-solid fa-plus fa-lg"></i></div>
-                <span class="block text-2xl font-extrabold text-marca-grisClaro mb-3">01</span>
+            <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:border-marca-azul/50 hover:shadow-md transition">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="w-12 h-12 rounded-lg flex items-center justify-center bg-marca-morado/10 text-marca-morado"><i class="fa-solid fa-lightbulb fa-lg"></i></div>
+                    <span class="text-2xl font-extrabold text-gray-200">01</span>
+                </div>
                 <h3 class="font-bold mb-2">IDEA</h3>
                 <p class="text-sm text-gray-500">Genera planes de clase completos a partir de un tema y un grado.</p>
             </div>
-            <div class="<?= e(tw_card()) ?> p-7">
-                <div class="w-12 h-12 flex items-center justify-center bg-marca-verde text-white mb-4"><i class="fa-regular fa-clipboard fa-lg"></i></div>
-                <span class="block text-2xl font-extrabold text-marca-grisClaro mb-3">02</span>
+            <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:border-marca-azul/50 hover:shadow-md transition">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="w-12 h-12 rounded-lg flex items-center justify-center bg-marca-verde/10 text-marca-verde"><i class="fa-regular fa-clipboard fa-lg"></i></div>
+                    <span class="text-2xl font-extrabold text-gray-200">02</span>
+                </div>
                 <h3 class="font-bold mb-2">RubriK</h3>
                 <p class="text-sm text-gray-500">Crea rúbricas de evaluación claras y alineadas a tus objetivos.</p>
             </div>
-            <div class="<?= e(tw_card()) ?> p-7">
-                <div class="w-12 h-12 flex items-center justify-center bg-marca-naranja text-white mb-4"><i class="fa-solid fa-diagram-project fa-lg"></i></div>
-                <span class="block text-2xl font-extrabold text-marca-grisClaro mb-3">03</span>
+            <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:border-marca-azul/50 hover:shadow-md transition">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="w-12 h-12 rounded-lg flex items-center justify-center bg-marca-naranja/10 text-marca-naranja"><i class="fa-solid fa-diagram-project fa-lg"></i></div>
+                    <span class="text-2xl font-extrabold text-gray-200">03</span>
+                </div>
                 <h3 class="font-bold mb-2">Planeo</h3>
                 <p class="text-sm text-gray-500">Diseña cursos completos con secuencia didáctica sugerida.</p>
             </div>
-            <div class="<?= e(tw_card()) ?> p-7">
-                <div class="w-12 h-12 flex items-center justify-center bg-marca-amarillo mb-4" style="color:#2B2B7A;"><i class="fa-solid fa-gamepad fa-lg"></i></div>
-                <span class="block text-2xl font-extrabold text-marca-grisClaro mb-3">04</span>
+            <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:border-marca-azul/50 hover:shadow-md transition">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="w-12 h-12 rounded-lg flex items-center justify-center bg-marca-amarillo/30" style="color:#8a8f00;"><i class="fa-solid fa-gamepad fa-lg"></i></div>
+                    <span class="text-2xl font-extrabold text-gray-200">04</span>
+                </div>
                 <h3 class="font-bold mb-2">Gamificación IA</h3>
                 <p class="text-sm text-gray-500">Convierte cualquier actividad en una experiencia con retos y niveles.</p>
             </div>
-            <div class="<?= e(tw_card()) ?> p-7">
-                <div class="w-12 h-12 flex items-center justify-center bg-marca-azul text-white mb-4"><i class="fa-solid fa-chart-simple fa-lg"></i></div>
-                <span class="block text-2xl font-extrabold text-marca-grisClaro mb-3">05</span>
+            <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:border-marca-azul/50 hover:shadow-md transition">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="w-12 h-12 rounded-lg flex items-center justify-center bg-marca-azul/10 text-marca-azul"><i class="fa-solid fa-chart-simple fa-lg"></i></div>
+                    <span class="text-2xl font-extrabold text-gray-200">05</span>
+                </div>
                 <h3 class="font-bold mb-2">MITICA</h3>
                 <p class="text-sm text-gray-500">Diagnostica el nivel de competencias TIC de tu institución.</p>
             </div>
-            <div class="rounded-lg bg-marca-azul p-7">
-                <div class="w-12 h-12 flex items-center justify-center bg-white/20 text-white mb-4"><i class="fa-solid fa-square-root-variable fa-lg"></i></div>
-                <span class="block text-2xl font-extrabold text-white/30 mb-3">06</span>
+            <div class="bg-marca-azul rounded-xl p-6 shadow-sm">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="w-12 h-12 rounded-lg flex items-center justify-center bg-white/20 text-white"><i class="fa-solid fa-square-root-variable fa-lg"></i></div>
+                    <span class="text-2xl font-extrabold text-white/30">06</span>
+                </div>
                 <h3 class="font-bold mb-2 text-white">Matemática Interactiva</h3>
                 <p class="text-sm text-white/75">Simulaciones y actividades para explorar las matemáticas aplicadas a la vida real.</p>
             </div>
@@ -236,17 +240,8 @@ function resumen_home(?string $resumen, string $extracto, int $largo = 110): str
     </div>
 </section>
 
-<!-- Divisor de acento: misma barra segmentada, orden invertido -->
-<div class="flex h-2.5">
-    <div class="flex-1" style="background:#5454E9;"></div>
-    <div class="flex-1" style="background:#865CF0;"></div>
-    <div class="flex-1" style="background:#4CB979;"></div>
-    <div class="flex-1" style="background:#E4EB60;"></div>
-    <div class="flex-1" style="background:#E9683B;"></div>
-</div>
-
 <!-- COMUNIDAD -->
-<section id="comunidad" class="py-24" style="background:#F5F5FC;">
+<section id="comunidad" class="py-24 bg-white border-t border-gray-100">
     <div class="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
         <div>
             <span class="text-marca-azul text-xs font-bold tracking-widest uppercase">Comunidad</span>
@@ -261,8 +256,8 @@ function resumen_home(?string $resumen, string $extracto, int $largo = 110): str
             </div>
         </div>
 
-        <div class="<?= e(tw_card()) ?> p-6 bg-gray-50">
-            <div class="flex items-center gap-2.5 bg-marca-azul rounded-t-lg px-4 py-3 -m-6 mb-5">
+        <div class="rounded-xl border border-gray-200 shadow-sm p-6 bg-gray-50">
+            <div class="flex items-center gap-2.5 bg-marca-azul rounded-t-xl px-4 py-3 -m-6 mb-5">
                 <div class="w-8 h-8 bg-white/20 flex items-center justify-center rounded-full"><i class="fa-solid fa-graduation-cap text-white text-sm"></i></div>
                 <span class="text-white font-bold text-sm">Pregúntale a Eduteka</span>
             </div>
