@@ -1,31 +1,15 @@
 <?php
 declare(strict_types=1);
-/** @var \Base $f3 */
-
-$pdo = \App\Lib\Db::pdo($f3);
-
-$totalArticulos = (int) $pdo->query("SELECT count(*) FROM articles WHERE estado = 'publicado'")->fetchColumn();
-
-// Destacados: articulos reales con portada ya generada (el lote de portadas corre en
-// segundo plano, asi que no todos los articulos recientes la tienen todavia).
-$candidatos = $pdo->query("
-    SELECT a.id, a.title, a.summary, left(a.body, 400) AS extracto, c.name AS categoria
-    FROM articles a
-    LEFT JOIN categories c ON c.id = a.category_id
-    WHERE a.estado = 'publicado'
-    ORDER BY a.article_date DESC NULLS LAST, a.id DESC
-    LIMIT 80
-")->fetchAll();
-
-$destacados = [];
-foreach ($candidatos as $c) {
-    if (is_file(__DIR__ . '/articulos/img/portadas/' . $c['id'] . '.jpg')) {
-        $destacados[] = $c;
-    }
-    if (count($destacados) >= 4) {
-        break;
-    }
-}
+if (!defined('EDUTEKA_APP')) { http_response_code(404); exit; }
+/**
+ * Vista de inicio. Recibe los datos ya resueltos por App\Controllers\Home::index()
+ * via App\Lib\View::render() — sin queries ni logica de negocio aqui.
+ *
+ * @var int $totalArticulos
+ * @var array $destacados
+ * @var string $titulo
+ * @var string $descripcion
+ */
 
 function resumen_home(?string $resumen, string $extracto, int $largo = 110): string
 {
@@ -33,9 +17,6 @@ function resumen_home(?string $resumen, string $extracto, int $largo = 110): str
     $texto = trim(preg_replace('/\s+/', ' ', $texto));
     return mb_substr($texto, 0, $largo) . (mb_strlen($texto) > $largo ? '…' : '');
 }
-
-$titulo = 'Inicio';
-$descripcion = 'Eduteka: recursos, artículos y herramientas con IA para docentes de Hispanoamérica. Centro de Innovación Educativa y TIC de la Universidad Icesi.';
 ?>
 <!doctype html>
 <html lang="es">

@@ -16,6 +16,32 @@ final class ArticleModel
         return (int) $pdo->query("SELECT count(*) FROM articles WHERE estado = 'publicado'")->fetchColumn();
     }
 
+    // Destacados de portada (home): articulos reales con portada ya generada (el
+    // lote de portadas corre en segundo plano, asi que no todos los articulos
+    // recientes la tienen todavia).
+    public static function destacadosConPortada(PDO $pdo, string $dirPortadas, int $limite = 4): array
+    {
+        $candidatos = $pdo->query("
+            SELECT a.id, a.title, a.summary, left(a.body, 400) AS extracto, c.name AS categoria
+            FROM articles a
+            LEFT JOIN categories c ON c.id = a.category_id
+            WHERE a.estado = 'publicado'
+            ORDER BY a.article_date DESC NULLS LAST, a.id DESC
+            LIMIT 80
+        ")->fetchAll();
+
+        $destacados = [];
+        foreach ($candidatos as $c) {
+            if (is_file($dirPortadas . '/' . $c['id'] . '.jpg')) {
+                $destacados[] = $c;
+            }
+            if (count($destacados) >= $limite) {
+                break;
+            }
+        }
+        return $destacados;
+    }
+
     // Tags de un conjunto de articulos en una sola consulta (evita N+1 por tarjeta).
     public static function tagsPorArticulos(PDO $pdo, array $ids): array
     {
