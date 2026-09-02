@@ -65,19 +65,19 @@ function tarjeta_articulo(array $a, array $tags = []): void
     $cuerpo = $a['extracto'] ?? $a['body'] ?? '';
     $id = (int) $a['id'];
     ?>
-    <a href="/articulos/ver.php?id=<?= $id ?>" class="<?= e(tw_card()) ?> overflow-hidden hover:border-marca-azul transition flex flex-col">
-        <div class="h-36 bg-marca-grisClaro/20 overflow-hidden">
-            <img src="/articulos/img/portadas/<?= $id ?>.jpg" loading="lazy" alt="" class="w-full h-full object-cover"
+    <a href="/articulos/ver.php?id=<?= $id ?>" class="bg-white rounded-xl overflow-hidden border border-gray-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition flex flex-col group">
+        <div class="relative h-40 bg-marca-grisClaro/20 overflow-hidden">
+            <img src="/articulos/img/portadas/<?= $id ?>.jpg" loading="lazy" alt="" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                  onerror="imgFallbackPortada(this, <?= $id ?>)">
-        </div>
-        <div class="p-4 flex-1 flex flex-col">
             <?php if (!empty($a['categoria_nombre'])): ?>
-                <span class="inline-block bg-marca-grisClaro/40 text-marca-morado text-xs px-2 py-0.5 rounded mb-2 self-start"><?= e($a['categoria_nombre']) ?></span>
+                <span class="absolute top-3 left-3 bg-white/90 backdrop-blur-sm text-marca-morado text-[11px] font-semibold px-2 py-1 rounded shadow-sm"><?= e($a['categoria_nombre']) ?></span>
             <?php endif; ?>
-            <div class="font-bold mb-1"><?= e($a['title']) ?></div>
-            <p class="text-sm text-gray-500 mb-2 flex-1"><?= e(resumen_corto($a['summary'] ?? null, $cuerpo)) ?></p>
+        </div>
+        <div class="p-5 flex-1 flex flex-col">
+            <div class="font-bold mb-1.5 leading-snug group-hover:text-marca-azul transition-colors"><?= e($a['title']) ?></div>
+            <p class="text-sm text-gray-500 mb-3 flex-1"><?= e(resumen_corto($a['summary'] ?? null, $cuerpo)) ?></p>
             <?php if ($tags): ?>
-                <div class="flex flex-wrap gap-1 pt-1 mt-auto">
+                <div class="flex flex-wrap gap-1.5 pt-3 mt-auto border-t border-gray-100">
                     <?php foreach (array_slice($tags, 0, 5) as $t): ?>
                         <span class="text-[11px] bg-marca-grisClaro/20 text-marca-azul px-1.5 py-0.5 rounded">#<?= e($t['name']) ?></span>
                     <?php endforeach; ?>
@@ -93,15 +93,19 @@ require __DIR__ . '/../templates/header.php';
 
 <!-- Buscador semántico -->
 <section class="mb-10">
-    <form method="get" id="form-busqueda-semantica" class="flex gap-2">
-        <div class="relative flex-1">
-            <i class="fa-solid fa-wand-magic-sparkles absolute left-3 top-1/2 -translate-y-1/2 text-marca-azul"></i>
-            <input type="text" name="q" value="<?= e($q) ?>" placeholder="Busca por tema, no por palabra exacta: “cómo evaluar proyectos colaborativos”…"
-                   class="w-full rounded-full border border-gray-300 pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-marca-azul">
-        </div>
-        <button type="submit" class="<?= e(tw_btn('primario')) ?> rounded-full px-6">Buscar</button>
+    <?php if ($modo === 'inicio'): ?>
+    <h1 class="text-2xl font-extrabold mb-1">Explorador de Contenidos</h1>
+    <p class="text-sm text-gray-500 mb-5">Busca por tema con IA o navega por categorías y etiquetas.</p>
+    <?php endif; ?>
+    <form method="get" id="form-busqueda-semantica" class="rounded-xl bg-white border border-gray-200 shadow-sm p-2 flex items-center gap-2">
+        <i class="fa-solid fa-magnifying-glass text-gray-400 ml-2"></i>
+        <input type="text" name="q" value="<?= e($q) ?>" placeholder="Busca por tema, no por palabra exacta: “cómo evaluar proyectos colaborativos”…"
+               class="flex-1 bg-transparent outline-none text-sm py-2">
+        <button type="submit" class="w-9 h-9 shrink-0 rounded-full bg-marca-azul/10 text-marca-azul hover:bg-marca-azul hover:text-white transition flex items-center justify-center" title="Buscar con IA">
+            <i class="fa-solid fa-wand-magic-sparkles text-sm"></i>
+        </button>
     </form>
-    <p class="text-xs text-gray-400 mt-1 ml-1">Búsqueda semántica con IA: entiende el significado de lo que escribes, no solo palabras exactas.</p>
+    <p class="text-xs text-gray-400 mt-2 ml-1">Búsqueda semántica con IA: entiende el significado de lo que escribes, no solo palabras exactas.</p>
 </section>
 
 <?php if ($modo === 'busqueda'): ?>

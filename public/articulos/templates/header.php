@@ -53,22 +53,22 @@ $descripcion = $descripcion ?? 'Recursos educativos de Eduteka';
     </style>
 </head>
 <body class="font-sans bg-white text-gray-900 text-left">
-<header class="no-imprimir sticky top-0 z-40 bg-white border-b border-gray-100">
-    <div class="max-w-6xl mx-auto px-4 h-[76px] flex items-center justify-between gap-6">
+<header class="no-imprimir fixed top-0 w-full z-40" style="background-color: rgba(20,20,30,.65); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,.15);">
+    <div class="max-w-6xl mx-auto px-4 h-20 flex items-center justify-between gap-6">
         <a href="/" class="flex items-center shrink-0">
-            <img src="/img/logo-eduteka.png" alt="Eduteka" class="h-8 w-auto">
+            <img src="/img/logo-eduteka.png" alt="Eduteka" class="h-8 w-auto brightness-0 invert">
         </a>
         <nav class="hidden md:flex items-center gap-2 text-sm font-semibold">
-            <a href="/articulos/index.php" class="bg-marca-azul/10 text-marca-azul px-3 py-1.5 rounded-full" aria-current="page">Contenido</a>
-            <a href="/#herramientas" class="px-3 py-1.5 rounded-full hover:text-marca-azul hover:bg-gray-50">Herramientas</a>
-            <a href="/#comunidad" class="px-3 py-1.5 rounded-full hover:text-marca-azul hover:bg-gray-50">Comunidad</a>
+            <a href="/articulos/index.php" class="bg-black/30 text-white px-4 py-2 rounded-full" aria-current="page">Contenido</a>
+            <a href="/#herramientas" class="text-white/90 hover:text-white hover:bg-black/20 px-4 py-2 rounded-full">Herramientas</a>
+            <a href="/#comunidad" class="text-white/90 hover:text-white hover:bg-black/20 px-4 py-2 rounded-full">Comunidad</a>
         </nav>
         <div class="flex items-center gap-3">
-            <form action="/articulos/index.php" method="get" class="hidden md:flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-full px-4 py-2 w-60">
-                <i class="fa-solid fa-magnifying-glass text-gray-400 text-sm"></i>
-                <input type="text" name="q" placeholder="Buscar artículos, temas..." class="bg-transparent outline-none text-sm w-full">
+            <form action="/articulos/index.php" method="get" class="hidden md:flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-2 w-60">
+                <i class="fa-solid fa-magnifying-glass text-white/60 text-sm"></i>
+                <input type="text" name="q" placeholder="Buscar artículos, temas..." class="bg-transparent outline-none text-sm w-full text-white placeholder-white/50">
             </form>
         </div>
     </div>
 </header>
-<main class="max-w-4xl mx-auto px-4 py-8">
+<main class="max-w-4xl mx-auto px-4 pt-28 pb-8">
