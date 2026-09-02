@@ -1,6 +1,0 @@
-{
-    "require": {
-        "erusev/parsedown": "^1.8",
-        "dompdf/dompdf": "^3.1"
-    }
-}
